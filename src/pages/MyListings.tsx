@@ -152,8 +152,8 @@ const MyListings = () => {
         // Upload image if selected
         if (selectedImage) {
           const fileExt = selectedImage.name.split('.').pop();
-          const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-          const filePath = `${fileName}`;
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
 
           const { error: uploadError, data } = await supabase.storage
             .from('part-images')
