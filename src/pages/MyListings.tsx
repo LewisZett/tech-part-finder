@@ -300,7 +300,7 @@ const MyListings = () => {
                     List a Part
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>List a Part</DialogTitle>
                     <DialogDescription>Add a part you want to sell</DialogDescription>
@@ -464,7 +464,7 @@ const MyListings = () => {
                     Create a Request
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create a Part Request</DialogTitle>
                     <DialogDescription>Tell us what part you're looking for</DialogDescription>
