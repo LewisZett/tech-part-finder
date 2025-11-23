@@ -58,6 +58,9 @@ const MyListings = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -126,6 +129,25 @@ const MyListings = () => {
     setImagePreview(null);
   };
 
+  const handleEdit = (type: "part" | "request", item: any) => {
+    setEditingItem(item);
+    setDialogType(type);
+    setFormData({
+      part_name: item.part_name,
+      category: item.category,
+      condition: item.condition || "new",
+      price: item.price?.toString() || "",
+      max_price: item.max_price?.toString() || "",
+      description: item.description || "",
+      location: item.location || "",
+      condition_preference: item.condition_preference || "",
+    });
+    if (item.image_url) {
+      setImagePreview(item.image_url);
+    }
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
@@ -169,21 +191,38 @@ const MyListings = () => {
             .getPublicUrl(filePath);
 
           imageUrl = publicUrl;
+        } else if (editingItem?.image_url) {
+          imageUrl = editingItem.image_url;
         }
 
-        const { error } = await supabase.from("parts").insert({
-          supplier_id: user.id,
-          part_name: formData.part_name,
-          category: formData.category,
-          condition: formData.condition,
-          price: formData.price ? parseFloat(formData.price) : null,
-          description: formData.description || null,
-          location: formData.location || null,
-          image_url: imageUrl,
-        });
+        if (editingItem) {
+          const { error } = await supabase.from("parts").update({
+            part_name: formData.part_name,
+            category: formData.category,
+            condition: formData.condition,
+            price: formData.price ? parseFloat(formData.price) : null,
+            description: formData.description || null,
+            location: formData.location || null,
+            image_url: imageUrl,
+          }).eq("id", editingItem.id);
 
-        if (error) throw error;
-        toast({ title: "Part listed successfully!" });
+          if (error) throw error;
+          toast({ title: "Part updated successfully!" });
+        } else {
+          const { error } = await supabase.from("parts").insert({
+            supplier_id: user.id,
+            part_name: formData.part_name,
+            category: formData.category,
+            condition: formData.condition,
+            price: formData.price ? parseFloat(formData.price) : null,
+            description: formData.description || null,
+            location: formData.location || null,
+            image_url: imageUrl,
+          });
+
+          if (error) throw error;
+          toast({ title: "Part listed successfully!" });
+        }
       } else {
         const validation = requestSchema.safeParse({
           ...formData,
@@ -199,21 +238,36 @@ const MyListings = () => {
           return;
         }
 
-        const { error } = await supabase.from("part_requests").insert({
-          requester_id: user.id,
-          part_name: formData.part_name,
-          category: formData.category,
-          condition_preference: formData.condition_preference || null,
-          max_price: formData.max_price ? parseFloat(formData.max_price) : null,
-          description: formData.description || null,
-          location: formData.location || null,
-        });
+        if (editingItem) {
+          const { error } = await supabase.from("part_requests").update({
+            part_name: formData.part_name,
+            category: formData.category,
+            condition_preference: formData.condition_preference || null,
+            max_price: formData.max_price ? parseFloat(formData.max_price) : null,
+            description: formData.description || null,
+            location: formData.location || null,
+          }).eq("id", editingItem.id);
 
-        if (error) throw error;
-        toast({ title: "Request created successfully!" });
+          if (error) throw error;
+          toast({ title: "Request updated successfully!" });
+        } else {
+          const { error } = await supabase.from("part_requests").insert({
+            requester_id: user.id,
+            part_name: formData.part_name,
+            category: formData.category,
+            condition_preference: formData.condition_preference || null,
+            max_price: formData.max_price ? parseFloat(formData.max_price) : null,
+            description: formData.description || null,
+            location: formData.location || null,
+          });
+
+          if (error) throw error;
+          toast({ title: "Request created successfully!" });
+        }
       }
 
       setDialogOpen(false);
+      setEditingItem(null);
       setFormData({
         part_name: "",
         category: "",
@@ -261,6 +315,73 @@ const MyListings = () => {
     }
   };
 
+  const handleDeleteSelected = async (type: "part" | "request") => {
+    const selected = type === "part" ? selectedParts : selectedRequests;
+    if (selected.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selected.size} ${type}${selected.size > 1 ? 's' : ''}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      const table = type === "part" ? "parts" : "part_requests";
+      const { error } = await supabase.from(table).delete().in("id", Array.from(selected));
+
+      if (error) throw error;
+      toast({ title: `${selected.size} ${type}${selected.size > 1 ? 's' : ''} deleted successfully!` });
+      if (type === "part") {
+        setSelectedParts(new Set());
+      } else {
+        setSelectedRequests(new Set());
+      }
+      fetchMyData(user.id);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    }
+  };
+
+  const toggleSelectAll = (type: "part" | "request") => {
+    if (type === "part") {
+      if (selectedParts.size === myParts.length) {
+        setSelectedParts(new Set());
+      } else {
+        setSelectedParts(new Set(myParts.map(p => p.id)));
+      }
+    } else {
+      if (selectedRequests.size === myRequests.length) {
+        setSelectedRequests(new Set());
+      } else {
+        setSelectedRequests(new Set(myRequests.map(r => r.id)));
+      }
+    }
+  };
+
+  const toggleSelect = (type: "part" | "request", id: string) => {
+    if (type === "part") {
+      const newSelected = new Set(selectedParts);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      setSelectedParts(newSelected);
+    } else {
+      const newSelected = new Set(selectedRequests);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      setSelectedRequests(newSelected);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -293,18 +414,26 @@ const MyListings = () => {
             </TabsList>
 
             <TabsContent value="parts" className="space-y-4">
-              <Dialog open={dialogOpen && dialogType === "part"} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => { setDialogType("part"); setDialogOpen(true); }} className="mb-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    List a Part
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>List a Part</DialogTitle>
-                    <DialogDescription>Add a part you want to sell</DialogDescription>
-                  </DialogHeader>
+              <div className="flex gap-2 mb-4 flex-wrap">
+                <Dialog open={dialogOpen && dialogType === "part"} onOpenChange={(open) => {
+                  setDialogOpen(open);
+                  if (!open) {
+                    setEditingItem(null);
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { setDialogType("part"); setDialogOpen(true); }}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      List a Part
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{editingItem ? "Edit Part" : "List a Part"}</DialogTitle>
+                      <DialogDescription>{editingItem ? "Update your part listing" : "Add a part you want to sell"}</DialogDescription>
+                    </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <Label htmlFor="part_name">Part Name *</Label>
@@ -406,15 +535,37 @@ const MyListings = () => {
                       </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={uploading}>
-                      {uploading ? "Uploading..." : "List Part"}
+                      {uploading ? (editingItem ? "Updating..." : "Uploading...") : (editingItem ? "Update Part" : "List Part")}
                     </Button>
                   </form>
                 </DialogContent>
               </Dialog>
+              {myParts.length > 0 && (
+                <>
+                  <Button variant="outline" onClick={() => toggleSelectAll("part")}>
+                    {selectedParts.size === myParts.length ? "Deselect All" : "Select All"}
+                  </Button>
+                  {selectedParts.size > 0 && (
+                    <Button variant="destructive" onClick={() => handleDeleteSelected("part")}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Selected ({selectedParts.size})
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myParts.map((part) => (
-                  <Card key={part.id}>
+                  <Card key={part.id} className={selectedParts.has(part.id) ? "ring-2 ring-primary" : ""}>
+                    <div className="absolute top-2 left-2 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedParts.has(part.id)}
+                        onChange={() => toggleSelect("part", part.id)}
+                        className="h-5 w-5 cursor-pointer"
+                      />
+                    </div>
                     {part.image_url && (
                       <div className="w-full h-48 overflow-hidden rounded-t-lg">
                         <img 
@@ -433,15 +584,26 @@ const MyListings = () => {
                       {part.price && <p className="text-xl font-bold text-primary mb-2">${part.price}</p>}
                       {part.location && <p className="text-xs text-muted-foreground mb-2">📍 {part.location}</p>}
                       <p className="text-xs text-muted-foreground mb-3">Status: {part.status}</p>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleDelete("part", part.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleEdit("part", part)}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleDelete("part", part.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -457,18 +619,22 @@ const MyListings = () => {
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-4">
-              <Dialog open={dialogOpen && dialogType === "request"} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => { setDialogType("request"); setDialogOpen(true); }} className="mb-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create a Request
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create a Part Request</DialogTitle>
-                    <DialogDescription>Tell us what part you're looking for</DialogDescription>
-                  </DialogHeader>
+              <div className="flex gap-2 mb-4 flex-wrap">
+                <Dialog open={dialogOpen && dialogType === "request"} onOpenChange={(open) => {
+                  setDialogOpen(open);
+                  if (!open) setEditingItem(null);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { setDialogType("request"); setDialogOpen(true); }}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create a Request
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{editingItem ? "Edit Request" : "Create a Part Request"}</DialogTitle>
+                      <DialogDescription>{editingItem ? "Update your part request" : "Tell us what part you're looking for"}</DialogDescription>
+                    </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <Label htmlFor="part_name_req">Part Name *</Label>
@@ -523,14 +689,36 @@ const MyListings = () => {
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       />
                     </div>
-                    <Button type="submit" className="w-full">Create Request</Button>
+                    <Button type="submit" className="w-full">{editingItem ? "Update Request" : "Create Request"}</Button>
                   </form>
                 </DialogContent>
               </Dialog>
+              {myRequests.length > 0 && (
+                <>
+                  <Button variant="outline" onClick={() => toggleSelectAll("request")}>
+                    {selectedRequests.size === myRequests.length ? "Deselect All" : "Select All"}
+                  </Button>
+                  {selectedRequests.size > 0 && (
+                    <Button variant="destructive" onClick={() => handleDeleteSelected("request")}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Selected ({selectedRequests.size})
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myRequests.map((request) => (
-                  <Card key={request.id}>
+                  <Card key={request.id} className={selectedRequests.has(request.id) ? "ring-2 ring-primary" : ""}>
+                    <div className="absolute top-2 left-2 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedRequests.has(request.id)}
+                        onChange={() => toggleSelect("request", request.id)}
+                        className="h-5 w-5 cursor-pointer"
+                      />
+                    </div>
                     <CardHeader>
                       <CardTitle className="text-lg">{request.part_name}</CardTitle>
                       <CardDescription>{request.category}</CardDescription>
@@ -541,15 +729,26 @@ const MyListings = () => {
                         Budget: Up to ${request.max_price}
                       </p>}
                       <p className="text-xs text-muted-foreground mb-3">Status: {request.status}</p>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleDelete("request", request.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleEdit("request", request)}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleDelete("request", request.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
