@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { User, Edit, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { User, Edit } from "lucide-react";
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
@@ -22,7 +21,6 @@ const Profile = () => {
   const [stats, setStats] = useState({ parts: 0, requests: 0, matches: 0 });
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -112,20 +110,9 @@ const Profile = () => {
   return (
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex-1">
-            <h1 className="text-4xl md:text-5xl font-bold mb-2 text-primary text-center">PROFILE</h1>
-            <p className="text-muted-foreground text-center font-rajdhani text-lg">MANAGE YOUR ACCOUNT</p>
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="shrink-0"
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
+        <div className="mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 text-primary text-center">PROFILE</h1>
+          <p className="text-muted-foreground text-center font-rajdhani text-lg">MANAGE YOUR ACCOUNT</p>
         </div>
 
         <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-large mb-6">
