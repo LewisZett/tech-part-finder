@@ -37,6 +37,9 @@
     --orange: 25 95% 53%;
     --orange-foreground: 0 0% 100%;
 
+    --teal: 158 100% 39%;
+    --teal-foreground: 0 0% 100%;
+
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
     --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -74,6 +77,9 @@
 
     --orange: 25 95% 58%;
     --orange-foreground: 0 0% 100%;
+
+    --teal: 158 100% 39%;
+    --teal-foreground: 0 0% 100%;
 
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4);

@@ -65,6 +65,10 @@ export default {
           DEFAULT: "hsl(var(--orange))",
           foreground: "hsl(var(--orange-foreground))",
         },
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          foreground: "hsl(var(--teal-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
