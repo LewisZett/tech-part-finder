@@ -34,6 +34,9 @@
     --sidebar-border: 220 20% 25%;
     --sidebar-ring: 158 64% 42%;
 
+    --orange: 25 95% 53%;
+    --orange-foreground: 0 0% 100%;
+
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
     --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -68,6 +71,9 @@
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 220 20% 20%;
     --sidebar-ring: 158 64% 45%;
+
+    --orange: 25 95% 58%;
+    --orange-foreground: 0 0% 100%;
 
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4);

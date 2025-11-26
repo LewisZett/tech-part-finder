@@ -46,19 +46,27 @@ const Dashboard = () => {
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-12 space-y-16">
         {/* Hero Section */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-6">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground font-orbitron">
             Welcome to PartMatch
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             The smart marketplace connecting spares/parts suppliers and buyers
           </p>
-          <div className="flex gap-4 justify-center pt-4">
-            <Button size="lg" onClick={() => navigate("/browse")}>
-              Browse Parts
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 max-w-3xl mx-auto">
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/browse")}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xl py-8 px-12 h-auto font-bold shadow-large hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              Find Parts Now
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/my-listings")}>
-              List Parts
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/my-listings")}
+              className="bg-orange hover:bg-orange/90 text-orange-foreground text-xl py-8 px-12 h-auto font-bold shadow-large hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              Start Selling Parts
             </Button>
           </div>
         </div>
