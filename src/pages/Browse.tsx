@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Package, ShoppingCart, MapPin } from "lucide-react";
+import { useCategory, categoryConfigs } from "@/contexts/CategoryContext";
 
 const Browse = () => {
   const [user, setUser] = useState<any>(null);
@@ -19,6 +20,7 @@ const Browse = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedCategory, config } = useCategory();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,12 +42,28 @@ const Browse = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Refetch when category changes
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [selectedCategory]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Map category to database category value
+      const categoryMap: Record<string, string> = {
+        phone: "Phone Spare Parts",
+        tv: "TV Spare Parts",
+        computer: "Computer Spare Parts",
+        car: "Car Spare Parts",
+      };
+      const dbCategory = categoryMap[selectedCategory];
+
       const [partsRes, requestsRes] = await Promise.all([
-        supabase.from("parts").select("*").eq("status", "available"),
-        supabase.from("part_requests").select("*").eq("status", "active"),
+        supabase.from("parts").select("*").eq("status", "available").eq("category", dbCategory),
+        supabase.from("part_requests").select("*").eq("status", "active").eq("category", dbCategory),
       ]);
 
       const partsData = partsRes.data ?? [];
@@ -100,7 +118,6 @@ const Browse = () => {
 
       if (error) throw error;
 
-      // Get the item name for notifications
       let itemName = "Unknown Item";
       if (type === "part") {
         const part = parts.find(p => p.id === itemId);
@@ -110,7 +127,6 @@ const Browse = () => {
         itemName = request?.part_name || "Unknown Request";
       }
 
-      // Send notifications in background (don't await)
       supabase.functions.invoke("send-match-notification", {
         body: {
           matchId: matchResult.id,
@@ -122,8 +138,6 @@ const Browse = () => {
       }).then(({ error: notifError }) => {
         if (notifError) {
           console.error("Error sending notifications:", notifError);
-        } else {
-          console.log("Notifications sent successfully");
         }
       });
 
@@ -153,6 +167,15 @@ const Browse = () => {
       request.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get category icon for badge
+  const getCategoryIcon = (category: string) => {
+    if (category.toLowerCase().includes("phone")) return "📱";
+    if (category.toLowerCase().includes("tv")) return "📺";
+    if (category.toLowerCase().includes("computer")) return "🖥️";
+    if (category.toLowerCase().includes("car")) return "🚗";
+    return "📦";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -168,25 +191,27 @@ const Browse = () => {
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent text-center">BROWSE MARKET</h1>
-          <p className="text-foreground/80 mb-6 text-center font-rajdhani text-lg">
-            DISCOVER • CONNECT • TRADE
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 text-foreground text-center font-orbitron">
+            {config.label}
+          </h1>
+          <p className="text-muted-foreground mb-6 text-center font-rajdhani text-lg">
+            Zimbabwe's Spare Parts Marketplace
           </p>
 
-          <div className="mb-6 relative">
+          <div className="mb-6 relative max-w-xl mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary" />
             <Input
-              placeholder="SEARCH BY PART OR CATEGORY..."
+              placeholder={config.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-primary/30 focus:border-primary bg-card/50 font-rajdhani"
+              className="pl-10 h-12 border-primary/30 focus:border-primary bg-card/50 font-rajdhani"
             />
           </div>
 
           <Tabs defaultValue="parts" className="space-y-6">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-card/50 border border-primary/30">
               <TabsTrigger value="parts" className="font-orbitron data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                PARTS ({filteredParts.length})
+                SPARE PARTS ({filteredParts.length})
               </TabsTrigger>
               <TabsTrigger value="requests" className="font-orbitron data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                 REQUESTS ({filteredRequests.length})
@@ -198,13 +223,20 @@ const Browse = () => {
                 <Card className="glass-card">
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Package className="h-16 w-16 text-primary mb-4 glow-cyan" />
-                    <p className="text-foreground/70 font-rajdhani text-lg">NO PARTS FOUND</p>
+                    <p className="text-foreground/70 font-rajdhani text-lg">NO SPARE PARTS FOUND</p>
+                    <p className="text-muted-foreground text-sm mt-2">Try switching categories or check back later</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredParts.map((part) => (
-                    <Card key={part.id} className="hover:scale-[1.02] transition-transform glass-card glow-cyan">
+                    <Card key={part.id} className="hover:scale-[1.02] transition-transform glass-card glow-cyan relative">
+                      {/* Category badge */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                          {getCategoryIcon(part.category)} {part.category.split(" ")[0]}
+                        </Badge>
+                      </div>
                       {part.image_url && (
                         <div className="w-full h-48 overflow-hidden rounded-t-lg relative">
                           <img 
@@ -221,13 +253,9 @@ const Browse = () => {
                           <Badge variant="secondary" className="bg-secondary/20 text-secondary border border-secondary/40">{part.condition}</Badge>
                         </div>
                         <CardDescription className="space-y-1">
-                          <div className="flex items-center text-sm text-foreground/70">
-                            <Package className="h-4 w-4 mr-1 text-primary" />
-                            {part.category}
-                          </div>
                           {part.location && (
                             <div className="flex items-center text-sm text-foreground/70">
-                              <MapPin className="h-4 w-4 mr-1 text-accent" />
+                              <MapPin className="h-4 w-4 mr-1 text-teal" />
                               {part.location}
                             </div>
                           )}
@@ -246,7 +274,7 @@ const Browse = () => {
                         {part.supplier_id !== user?.id && (
                           <>
                             <Button
-                              className="w-full mb-2"
+                              className="w-full mb-2 bg-teal hover:bg-teal/90"
                               onClick={() => handleCreateMatch("part", part.id, part.supplier_id)}
                             >
                               CONTACT SUPPLIER
@@ -271,12 +299,19 @@ const Browse = () => {
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <ShoppingCart className="h-16 w-16 text-secondary mb-4 glow-purple" />
                     <p className="text-foreground/70 font-rajdhani text-lg">NO REQUESTS FOUND</p>
+                    <p className="text-muted-foreground text-sm mt-2">Try switching categories or check back later</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredRequests.map((request) => (
-                    <Card key={request.id} className="hover:scale-[1.02] transition-transform glass-card glow-purple">
+                    <Card key={request.id} className="hover:scale-[1.02] transition-transform glass-card glow-purple relative">
+                      {/* Category badge */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                          {getCategoryIcon(request.category)} {request.category.split(" ")[0]}
+                        </Badge>
+                      </div>
                       <CardHeader>
                         <div className="flex items-start justify-between mb-2">
                           <CardTitle className="text-lg text-secondary font-orbitron">{request.part_name}</CardTitle>
@@ -285,13 +320,9 @@ const Browse = () => {
                           )}
                         </div>
                         <CardDescription className="space-y-1">
-                          <div className="flex items-center text-sm text-foreground/70">
-                            <Package className="h-4 w-4 mr-1 text-secondary" />
-                            {request.category}
-                          </div>
                           {request.location && (
                             <div className="flex items-center text-sm text-foreground/70">
-                              <MapPin className="h-4 w-4 mr-1 text-accent" />
+                              <MapPin className="h-4 w-4 mr-1 text-teal" />
                               {request.location}
                             </div>
                           )}
@@ -316,7 +347,7 @@ const Browse = () => {
                               variant="secondary"
                               onClick={() => handleCreateMatch("request", request.id, request.requester_id)}
                             >
-                              I HAVE THIS PART
+                              I HAVE THIS SPARE PART
                             </Button>
                             <AiMatchSuggestions 
                               itemId={request.id} 

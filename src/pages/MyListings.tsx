@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Edit, Upload, X, FileText, Clipboard, Search, MapPin, Package } from "lucide-react";
 import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
+import { useCategory, categoryConfigs, Category } from "@/contexts/CategoryContext";
+import { PdfUpload } from "@/components/PdfUpload";
+import { TextBulkUpload } from "@/components/TextBulkUpload";
+
+const CATEGORY_OPTIONS = [
+  { value: "Phone Spare Parts", label: "📱 Phone Spare Parts" },
+  { value: "TV Spare Parts", label: "📺 TV Spare Parts" },
+  { value: "Computer Spare Parts", label: "🖥️ Computer Spare Parts" },
+  { value: "Car Spare Parts", label: "🚗 Car Spare Parts" },
+];
 
 const partSchema = z.object({
   part_name: z.string().min(2, "Part name must be at least 2 characters").max(100),
@@ -34,6 +44,25 @@ const requestSchema = z.object({
   location: z.string().max(100).optional(),
 });
 
+// Map category context to database category value
+const getCategoryDbValue = (category: Category): string => {
+  const map: Record<Category, string> = {
+    phone: "Phone Spare Parts",
+    tv: "TV Spare Parts",
+    computer: "Computer Spare Parts",
+    car: "Car Spare Parts",
+  };
+  return map[category];
+};
+
+const getCategoryIcon = (category: string) => {
+  if (category.toLowerCase().includes("phone")) return "📱";
+  if (category.toLowerCase().includes("tv")) return "📺";
+  if (category.toLowerCase().includes("computer")) return "🖥️";
+  if (category.toLowerCase().includes("car")) return "🚗";
+  return "📦";
+};
+
 const MyListings = () => {
   const [user, setUser] = useState<any>(null);
   const [myParts, setMyParts] = useState<any[]>([]);
@@ -46,10 +75,11 @@ const MyListings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedCategory, config } = useCategory();
 
   const [formData, setFormData] = useState({
     part_name: "",
-    category: "",
+    category: getCategoryDbValue(selectedCategory),
     condition: "new",
     price: "",
     max_price: "",
@@ -82,6 +112,13 @@ const MyListings = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Update form category when selectedCategory changes
+  useEffect(() => {
+    if (!editingItem) {
+      setFormData(prev => ({ ...prev, category: getCategoryDbValue(selectedCategory) }));
+    }
+  }, [selectedCategory, editingItem]);
 
   const fetchMyData = async (userId: string) => {
     setLoading(true);
@@ -207,7 +244,7 @@ const MyListings = () => {
           }).eq("id", editingItem.id);
 
           if (error) throw error;
-          toast({ title: "Part updated successfully!" });
+          toast({ title: "Spare part updated successfully!" });
         } else {
           const { error } = await supabase.from("parts").insert({
             supplier_id: user.id,
@@ -221,7 +258,7 @@ const MyListings = () => {
           });
 
           if (error) throw error;
-          toast({ title: "Part listed successfully!" });
+          toast({ title: "Spare part listed successfully!" });
         }
       } else {
         const validation = requestSchema.safeParse({
@@ -271,7 +308,7 @@ const MyListings = () => {
       setEditingItem(null);
       setFormData({
         part_name: "",
-        category: "",
+        category: getCategoryDbValue(selectedCategory),
         condition: "new",
         price: "",
         max_price: "",
@@ -295,7 +332,7 @@ const MyListings = () => {
 
   const handleDelete = async (type: "part" | "request", id: string) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete this ${type}? This action cannot be undone.`
+      `Are you sure you want to delete this ${type === "part" ? "spare part" : "request"}? This action cannot be undone.`
     );
     
     if (!confirmed) return;
@@ -305,7 +342,7 @@ const MyListings = () => {
       const { error } = await supabase.from(table).delete().eq("id", id);
 
       if (error) throw error;
-      toast({ title: `${type === "part" ? "Part" : "Request"} deleted successfully!` });
+      toast({ title: `${type === "part" ? "Spare part" : "Request"} deleted successfully!` });
       fetchMyData(user.id);
     } catch (error: any) {
       toast({
@@ -316,15 +353,24 @@ const MyListings = () => {
     }
   };
 
+  // Filter by selected category AND search query
+  const dbCategory = getCategoryDbValue(selectedCategory);
+  
   const filteredParts = myParts.filter(part =>
-    part.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    part.category.toLowerCase().includes(searchQuery.toLowerCase())
+    part.category === dbCategory &&
+    (part.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    part.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredRequests = myRequests.filter(request =>
-    request.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.category.toLowerCase().includes(searchQuery.toLowerCase())
+    request.category === dbCategory &&
+    (request.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Count all items in selected category (for tab labels)
+  const partsInCategory = myParts.filter(p => p.category === dbCategory).length;
+  const requestsInCategory = myRequests.filter(r => r.category === dbCategory).length;
 
   if (loading) {
     return (
@@ -344,7 +390,9 @@ const MyListings = () => {
           {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="text-[38px] font-bold">My Listings</h1>
-            <p className="text-[17px]" style={{ color: '#666' }}>Manage your parts and requests</p>
+            <p className="text-[17px] text-muted-foreground">
+              Manage your {config.label.toLowerCase()}
+            </p>
           </div>
 
           {/* Bulk Upload Section */}
@@ -354,7 +402,7 @@ const MyListings = () => {
                 <FileText className="h-12 w-12 text-primary" />
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Bulk Upload from PDF</h3>
-                  <p className="text-sm text-muted-foreground">Upload your parts inventory</p>
+                  <p className="text-sm text-muted-foreground">Upload your spare parts inventory</p>
                 </div>
                 <Button 
                   className="w-full h-12 bg-primary hover:bg-primary/90"
@@ -395,13 +443,13 @@ const MyListings = () => {
                 value="parts" 
                 className="font-bold text-base data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none"
               >
-                My Parts ({myParts.length})
+                My Spare Parts ({partsInCategory})
               </TabsTrigger>
               <TabsTrigger 
                 value="requests"
                 className="font-bold text-base data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none"
               >
-                My Requests ({myRequests.length})
+                My Requests ({requestsInCategory})
               </TabsTrigger>
             </TabsList>
 
@@ -409,19 +457,19 @@ const MyListings = () => {
               {/* Main Action Button */}
               <Button 
                 onClick={() => { setDialogType("part"); setDialogOpen(true); }}
-                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-teal-foreground"
+                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-white"
               >
                 <Plus className="mr-2 h-5 w-5" />
-                LIST A PART
+                LIST A SPARE PART
               </Button>
 
-              {myParts.length > 0 && (
+              {partsInCategory > 0 && (
                 <>
                   {/* Search Bar */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                      placeholder="Search my parts..."
+                      placeholder={`Search my ${config.label.toLowerCase()}...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 h-12"
@@ -431,7 +479,13 @@ const MyListings = () => {
                   {/* Parts List */}
                   <div className="space-y-4">
                     {filteredParts.map((part) => (
-                      <Card key={part.id} className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-6">
+                      <Card key={part.id} className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-6 relative">
+                        {/* Category badge */}
+                        <div className="absolute top-3 right-3">
+                          <Badge variant="secondary" className="bg-background/80">
+                            {getCategoryIcon(part.category)} {part.category.split(" ")[0]}
+                          </Badge>
+                        </div>
                         <div className="flex gap-4">
                           {/* Image */}
                           <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
@@ -486,7 +540,7 @@ const MyListings = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleDelete("part", part.id)}
-                                  className="h-9 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                                  className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   Delete
                                 </Button>
@@ -504,19 +558,19 @@ const MyListings = () => {
               )}
 
               {/* Empty State */}
-              {myParts.length === 0 && (
+              {partsInCategory === 0 && (
                 <Card className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-12">
                   <div className="text-center space-y-6">
-                    <Package className="h-24 w-24 mx-auto text-muted-foreground/30" />
+                    <div className="text-6xl">{categoryConfigs[selectedCategory].icon}</div>
                     <div>
-                      <h3 className="text-xl font-semibold mb-2">No parts listed yet</h3>
-                      <p className="text-muted-foreground">Start selling by listing your first part</p>
+                      <h3 className="text-xl font-semibold mb-2">No {config.label.toLowerCase()} listed yet</h3>
+                      <p className="text-muted-foreground">Start selling by listing your first spare part</p>
                     </div>
                     <Button 
                       onClick={() => { setDialogType("part"); setDialogOpen(true); }}
-                      className="bg-teal hover:bg-teal/90 text-teal-foreground h-14 px-8 text-lg font-bold"
+                      className="bg-teal hover:bg-teal/90 text-white h-14 px-8 text-lg font-bold"
                     >
-                      LIST YOUR FIRST PART
+                      LIST YOUR FIRST SPARE PART
                     </Button>
                   </div>
                 </Card>
@@ -527,19 +581,19 @@ const MyListings = () => {
               {/* Main Action Button */}
               <Button 
                 onClick={() => { setDialogType("request"); setDialogOpen(true); }}
-                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-teal-foreground"
+                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-white"
               >
                 <Plus className="mr-2 h-5 w-5" />
                 CREATE REQUEST
               </Button>
 
-              {myRequests.length > 0 && (
+              {requestsInCategory > 0 && (
                 <>
                   {/* Search Bar */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                      placeholder="Search my requests..."
+                      placeholder={`Search my ${config.label.toLowerCase()} requests...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 h-12"
@@ -549,11 +603,16 @@ const MyListings = () => {
                   {/* Requests List */}
                   <div className="space-y-4">
                     {filteredRequests.map((request) => (
-                      <Card key={request.id} className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-6">
+                      <Card key={request.id} className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-6 relative">
+                        {/* Category badge */}
+                        <div className="absolute top-3 right-3">
+                          <Badge variant="secondary" className="bg-background/80">
+                            {getCategoryIcon(request.category)} {request.category.split(" ")[0]}
+                          </Badge>
+                        </div>
                         <div className="space-y-3">
                           <div>
                             <h3 className="font-bold text-lg leading-tight">{request.part_name}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">{request.category}</p>
                           </div>
 
                           {request.description && (
@@ -590,7 +649,7 @@ const MyListings = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDelete("request", request.id)}
-                                className="h-9 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                                className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 Delete
                               </Button>
@@ -607,17 +666,17 @@ const MyListings = () => {
               )}
 
               {/* Empty State */}
-              {myRequests.length === 0 && (
+              {requestsInCategory === 0 && (
                 <Card className="rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.06)] p-12">
                   <div className="text-center space-y-6">
-                    <Search className="h-24 w-24 mx-auto text-muted-foreground/30" />
+                    <div className="text-6xl">{categoryConfigs[selectedCategory].icon}</div>
                     <div>
-                      <h3 className="text-xl font-semibold mb-2">Need a part? Get quotes fast</h3>
+                      <h3 className="text-xl font-semibold mb-2">Need a spare part? Get quotes fast</h3>
                       <p className="text-muted-foreground">Create a request and let suppliers come to you</p>
                     </div>
                     <Button 
                       onClick={() => { setDialogType("request"); setDialogOpen(true); }}
-                      className="bg-teal hover:bg-teal/90 text-teal-foreground h-14 px-8 text-lg font-bold"
+                      className="bg-teal hover:bg-teal/90 text-white h-14 px-8 text-lg font-bold"
                     >
                       CREATE REQUEST
                     </Button>
@@ -640,8 +699,8 @@ const MyListings = () => {
       }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Edit Part" : "List a Part"}</DialogTitle>
-            <DialogDescription>{editingItem ? "Update your part listing" : "Add a part you want to sell"}</DialogDescription>
+            <DialogTitle>{editingItem ? "Edit Spare Part" : "List a Spare Part"}</DialogTitle>
+            <DialogDescription>{editingItem ? "Update your spare part listing" : "Add a spare part you want to sell"}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -650,17 +709,24 @@ const MyListings = () => {
                 id="part_name"
                 value={formData.part_name}
                 onChange={(e) => setFormData({ ...formData, part_name: e.target.value })}
+                placeholder="e.g. Samsung A15 LCD Screen"
                 required
               />
             </div>
             <div>
               <Label htmlFor="category">Category *</Label>
-              <Input
-                id="category"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                required
-              />
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="condition">Condition *</Label>
@@ -691,6 +757,7 @@ const MyListings = () => {
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g. Harare, Zimbabwe"
               />
             </div>
             <div>
@@ -699,6 +766,7 @@ const MyListings = () => {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe the spare part..."
               />
             </div>
             <div>
@@ -733,7 +801,7 @@ const MyListings = () => {
                     <label htmlFor="image" className="cursor-pointer flex flex-col items-center">
                       <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                       <span className="text-sm text-muted-foreground">
-                        Click to upload part image
+                        Click to upload spare part image
                       </span>
                       <span className="text-xs text-muted-foreground mt-1">
                         JPEG, PNG, WebP (max 5MB)
@@ -743,8 +811,8 @@ const MyListings = () => {
                 )}
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={uploading}>
-              {uploading ? (editingItem ? "Updating..." : "Uploading...") : (editingItem ? "Update Part" : "List Part")}
+            <Button type="submit" className="w-full bg-teal hover:bg-teal/90" disabled={uploading}>
+              {uploading ? (editingItem ? "Updating..." : "Uploading...") : (editingItem ? "Update Spare Part" : "List Spare Part")}
             </Button>
           </form>
         </DialogContent>
@@ -757,8 +825,8 @@ const MyListings = () => {
       }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Edit Request" : "Create a Part Request"}</DialogTitle>
-            <DialogDescription>{editingItem ? "Update your part request" : "Tell us what part you're looking for"}</DialogDescription>
+            <DialogTitle>{editingItem ? "Edit Request" : "Create a Spare Part Request"}</DialogTitle>
+            <DialogDescription>{editingItem ? "Update your spare part request" : "Tell us what spare part you're looking for"}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -767,17 +835,24 @@ const MyListings = () => {
                 id="part_name_req"
                 value={formData.part_name}
                 onChange={(e) => setFormData({ ...formData, part_name: e.target.value })}
+                placeholder="e.g. iPhone 13 Pro Battery"
                 required
               />
             </div>
             <div>
               <Label htmlFor="category_req">Category *</Label>
-              <Input
-                id="category_req"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                required
-              />
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="condition_preference">Condition Preference</Label>
@@ -785,11 +860,11 @@ const MyListings = () => {
                 id="condition_preference"
                 value={formData.condition_preference}
                 onChange={(e) => setFormData({ ...formData, condition_preference: e.target.value })}
-                placeholder="e.g., new, used"
+                placeholder="e.g., new, used, any"
               />
             </div>
             <div>
-              <Label htmlFor="max_price">Max Price ($)</Label>
+              <Label htmlFor="max_price">Max Budget ($)</Label>
               <Input
                 id="max_price"
                 type="number"
@@ -804,6 +879,7 @@ const MyListings = () => {
                 id="location_req"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g. Bulawayo, Zimbabwe"
               />
             </div>
             <div>
@@ -812,12 +888,35 @@ const MyListings = () => {
                 id="description_req"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe what you need..."
               />
             </div>
-            <Button type="submit" className="w-full" disabled={uploading}>
+            <Button type="submit" className="w-full bg-teal hover:bg-teal/90" disabled={uploading}>
               {uploading ? (editingItem ? "Updating..." : "Creating...") : (editingItem ? "Update Request" : "Create Request")}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Upload Dialog */}
+      <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Upload from PDF</DialogTitle>
+            <DialogDescription>Upload a PDF with your spare parts inventory</DialogDescription>
+          </DialogHeader>
+          <PdfUpload onSuccess={() => { setPdfDialogOpen(false); fetchMyData(user.id); }} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Text Bulk Upload Dialog */}
+      <Dialog open={textDialogOpen} onOpenChange={setTextDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Paste Parts List</DialogTitle>
+            <DialogDescription>Paste your spare parts list from a spreadsheet</DialogDescription>
+          </DialogHeader>
+          <TextBulkUpload onSuccess={() => { setTextDialogOpen(false); fetchMyData(user.id); }} />
         </DialogContent>
       </Dialog>
     </AppLayout>

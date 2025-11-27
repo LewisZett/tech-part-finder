@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Loader2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Upload, Loader2 } from 'lucide-react';
 
-export const PdfUpload = () => {
+interface PdfUploadProps {
+  onSuccess?: () => void;
+}
+
+export const PdfUpload = ({ onSuccess }: PdfUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
   const { toast } = useToast();
@@ -49,7 +52,7 @@ export const PdfUpload = () => {
 
       toast({
         title: 'File uploaded',
-        description: 'Processing parts list...',
+        description: 'Processing spare parts list...',
       });
 
       setUploading(false);
@@ -63,14 +66,18 @@ export const PdfUpload = () => {
 
       toast({
         title: 'Success!',
-        description: `Added ${data.count} parts to your listings`,
+        description: `Added ${data.count} spare parts to your listings`,
       });
 
       // Cleanup: delete the uploaded file
       await supabase.storage.from('part-documents').remove([fileName]);
 
-      // Trigger a page refresh via React Router instead of hard reload
-      setTimeout(() => window.location.reload(), 1000);
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        setTimeout(() => window.location.reload(), 1000);
+      }
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast({
@@ -86,49 +93,35 @@ export const PdfUpload = () => {
   };
 
   return (
-    <Card className="p-6 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText className="w-6 h-6 text-primary" />
-          <div>
-            <h3 className="font-semibold">Bulk Upload from PDF</h3>
-            <p className="text-sm text-muted-foreground">
-              Upload a PDF with your parts list and AI will extract them automatically
-            </p>
-          </div>
-        </div>
-        <div>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileUpload}
-            disabled={uploading || parsing}
-            className="hidden"
-            id="pdf-upload"
-          />
-          <label htmlFor="pdf-upload">
-            <Button
-              disabled={uploading || parsing}
-              className="cursor-pointer"
-              asChild
-            >
-              <span>
-                {uploading || parsing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {uploading ? 'Uploading...' : 'Processing...'}
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload PDF
-                  </>
-                )}
+    <div className="space-y-4">
+      <input
+        type="file"
+        accept=".pdf"
+        onChange={handleFileUpload}
+        disabled={uploading || parsing}
+        className="hidden"
+        id="pdf-upload"
+      />
+      <label htmlFor="pdf-upload" className="block">
+        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+          {uploading || parsing ? (
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-10 w-10 text-primary animate-spin mb-3" />
+              <span className="text-sm text-muted-foreground">
+                {uploading ? 'Uploading...' : 'Processing spare parts...'}
               </span>
-            </Button>
-          </label>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+              <span className="text-sm font-medium">Click to upload PDF</span>
+              <span className="text-xs text-muted-foreground mt-1">
+                PDF files up to 10MB
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-    </Card>
+      </label>
+    </div>
   );
 };
