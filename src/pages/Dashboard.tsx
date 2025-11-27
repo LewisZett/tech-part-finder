@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
+import { CategoryHero } from "@/components/CategoryHero";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Loader2, Upload, Zap, Shield, CheckCircle } from "lucide-react";
 
 const Dashboard = () => {
@@ -44,31 +44,15 @@ const Dashboard = () => {
 
   return (
     <AppLayout user={user}>
+      {/* Category-specific Hero */}
+      <CategoryHero />
+
       <div className="container mx-auto px-4 py-12 space-y-16">
-        {/* Hero Section */}
-        <div className="text-center space-y-6">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground font-orbitron">
-            Welcome to PartMatch
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            The smart marketplace connecting spares/parts suppliers and buyers
+        {/* Tagline */}
+        <div className="text-center">
+          <p className="text-lg text-muted-foreground font-rajdhani">
+            Zimbabwe's Spare Parts Marketplace – Phones ∙ TVs ∙ Laptops ∙ Cars
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 max-w-3xl mx-auto">
-            <Button 
-              size="lg" 
-              onClick={() => navigate("/browse")}
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xl py-8 px-12 h-auto font-bold shadow-large hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              Find Parts Now
-            </Button>
-            <Button 
-              size="lg" 
-              onClick={() => navigate("/my-listings")}
-              className="bg-orange hover:bg-orange/90 text-orange-foreground text-xl py-8 px-12 h-auto font-bold shadow-large hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              Start Selling Parts
-            </Button>
-          </div>
         </div>
 
         {/* How It Works Section */}
@@ -95,10 +79,10 @@ const Dashboard = () => {
                     1
                   </div>
                   <h3 className="text-xl font-semibold text-foreground font-orbitron">
-                    List or Request Parts
+                    List or Request
                   </h3>
                   <p className="text-muted-foreground text-sm">
-                    Add parts you want to sell or create requests for parts you need
+                    Add spare parts you want to sell or create requests for spare parts you need
                   </p>
                 </div>
               </CardContent>
