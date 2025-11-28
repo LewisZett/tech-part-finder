@@ -158,7 +158,9 @@ const Browse = () => {
   const filteredParts = parts.filter(
     (part) =>
       part.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      part.category.toLowerCase().includes(searchQuery.toLowerCase())
+      part.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (part.vehicle_make && part.vehicle_make.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (part.vehicle_model && part.vehicle_model.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredRequests = requests.filter(
@@ -253,6 +255,18 @@ const Browse = () => {
                           <Badge variant="secondary" className="bg-secondary/20 text-secondary border border-secondary/40">{part.condition}</Badge>
                         </div>
                         <CardDescription className="space-y-1">
+                          {/* Vehicle info for car parts */}
+                          {part.category === "Car Spare Parts" && part.vehicle_make && (
+                            <div className="text-sm font-medium text-primary/80 mb-1">
+                              🚗 {part.vehicle_make}
+                              {part.vehicle_model && ` ${part.vehicle_model}`}
+                              {part.vehicle_year_from && (
+                                <span className="text-foreground/60">
+                                  {" "}({part.vehicle_year_from}{part.vehicle_year_to && part.vehicle_year_to !== part.vehicle_year_from ? `-${part.vehicle_year_to}` : ""})
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {part.location && (
                             <div className="flex items-center text-sm text-foreground/70">
                               <MapPin className="h-4 w-4 mr-1 text-teal" />
