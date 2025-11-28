@@ -18,7 +18,8 @@ export function CategoryHero() {
 
   const handleQuickAction = (type: "buyer" | "seller") => {
     if (type === "buyer") {
-      navigate("/browse");
+      // Navigate to My Listings and open the create request dialog
+      navigate("/my-listings?action=create-request");
     } else {
       navigate("/my-listings");
     }

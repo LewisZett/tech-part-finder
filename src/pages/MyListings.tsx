@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -74,8 +74,20 @@ const MyListings = () => {
   const [textDialogOpen, setTextDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { selectedCategory, config } = useCategory();
+
+  // Handle URL action parameter to auto-open dialogs
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "create-request" && user) {
+      setDialogType("request");
+      setDialogOpen(true);
+      // Clear the URL param after opening dialog
+      setSearchParams({});
+    }
+  }, [searchParams, user, setSearchParams]);
 
   const [formData, setFormData] = useState({
     part_name: "",
