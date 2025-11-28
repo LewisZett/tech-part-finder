@@ -26,6 +26,19 @@ const CATEGORY_OPTIONS = [
   { value: "Car Spare Parts", label: "🚗 Car Spare Parts" },
 ];
 
+// Popular car makes in Zimbabwe
+const CAR_MAKES = [
+  "Toyota", "Nissan", "Honda", "Mazda", "Mitsubishi", "Isuzu", "Ford", "Chevrolet",
+  "Mercedes-Benz", "BMW", "Volkswagen", "Hyundai", "Kia", "Suzuki", "Subaru",
+  "Land Rover", "Jeep", "Peugeot", "Renault", "Volvo", "Audi", "Lexus", "Other"
+];
+
+// Generate year options (1990 to current year + 1)
+const YEAR_OPTIONS = Array.from(
+  { length: new Date().getFullYear() - 1989 + 1 },
+  (_, i) => (new Date().getFullYear() + 1 - i).toString()
+);
+
 const partSchema = z.object({
   part_name: z.string().min(2, "Part name must be at least 2 characters").max(100),
   category: z.string().min(1, "Category is required"),
@@ -33,6 +46,10 @@ const partSchema = z.object({
   price: z.number().min(0).optional(),
   description: z.string().max(500).optional(),
   location: z.string().max(100).optional(),
+  vehicle_make: z.string().optional(),
+  vehicle_model: z.string().optional(),
+  vehicle_year_from: z.number().optional(),
+  vehicle_year_to: z.number().optional(),
 });
 
 const requestSchema = z.object({
@@ -98,6 +115,10 @@ const MyListings = () => {
     description: "",
     location: "",
     condition_preference: "",
+    vehicle_make: "",
+    vehicle_model: "",
+    vehicle_year_from: "",
+    vehicle_year_to: "",
   });
   
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -191,6 +212,10 @@ const MyListings = () => {
       description: item.description || "",
       location: item.location || "",
       condition_preference: item.condition_preference || "",
+      vehicle_make: item.vehicle_make || "",
+      vehicle_model: item.vehicle_model || "",
+      vehicle_year_from: item.vehicle_year_from?.toString() || "",
+      vehicle_year_to: item.vehicle_year_to?.toString() || "",
     });
     if (item.image_url) {
       setImagePreview(item.image_url);
@@ -244,6 +269,20 @@ const MyListings = () => {
           imageUrl = editingItem.image_url;
         }
 
+        // Prepare vehicle fields (only for car parts)
+        const isCarPart = formData.category === "Car Spare Parts";
+        const vehicleFields = isCarPart ? {
+          vehicle_make: formData.vehicle_make || null,
+          vehicle_model: formData.vehicle_model || null,
+          vehicle_year_from: formData.vehicle_year_from ? parseInt(formData.vehicle_year_from) : null,
+          vehicle_year_to: formData.vehicle_year_to ? parseInt(formData.vehicle_year_to) : null,
+        } : {
+          vehicle_make: null,
+          vehicle_model: null,
+          vehicle_year_from: null,
+          vehicle_year_to: null,
+        };
+
         if (editingItem) {
           const { error } = await supabase.from("parts").update({
             part_name: formData.part_name,
@@ -253,6 +292,7 @@ const MyListings = () => {
             description: formData.description || null,
             location: formData.location || null,
             image_url: imageUrl,
+            ...vehicleFields,
           }).eq("id", editingItem.id);
 
           if (error) throw error;
@@ -267,6 +307,7 @@ const MyListings = () => {
             description: formData.description || null,
             location: formData.location || null,
             image_url: imageUrl,
+            ...vehicleFields,
           });
 
           if (error) throw error;
@@ -327,6 +368,10 @@ const MyListings = () => {
         description: "",
         location: "",
         condition_preference: "",
+        vehicle_make: "",
+        vehicle_model: "",
+        vehicle_year_from: "",
+        vehicle_year_to: "",
       });
       setSelectedImage(null);
       setImagePreview(null);
@@ -512,6 +557,18 @@ const MyListings = () => {
                           <div className="flex-1 min-w-0 space-y-2">
                             <div>
                               <h3 className="font-bold text-lg leading-tight">{part.part_name}</h3>
+                              {/* Vehicle info for car parts */}
+                              {part.category === "Car Spare Parts" && part.vehicle_make && (
+                                <p className="text-sm text-primary font-medium mt-0.5">
+                                  🚗 {part.vehicle_make}
+                                  {part.vehicle_model && ` ${part.vehicle_model}`}
+                                  {part.vehicle_year_from && (
+                                    <span className="text-muted-foreground">
+                                      {" "}({part.vehicle_year_from}{part.vehicle_year_to && part.vehicle_year_to !== part.vehicle_year_from ? `-${part.vehicle_year_to}` : ""})
+                                    </span>
+                                  )}
+                                </p>
+                              )}
                               <div className="flex gap-2 mt-1">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
                                   {part.condition}
@@ -740,6 +797,70 @@ const MyListings = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Vehicle fields - only show for Car Spare Parts */}
+            {formData.category === "Car Spare Parts" && (
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <p className="text-sm font-medium text-muted-foreground">Vehicle Compatibility (Make → Model → Year)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="vehicle_make">Make *</Label>
+                    <Select value={formData.vehicle_make} onValueChange={(value) => setFormData({ ...formData, vehicle_make: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select make" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CAR_MAKES.map((make) => (
+                          <SelectItem key={make} value={make}>
+                            {make}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="vehicle_model">Model</Label>
+                    <Input
+                      id="vehicle_model"
+                      value={formData.vehicle_model}
+                      onChange={(e) => setFormData({ ...formData, vehicle_model: e.target.value })}
+                      placeholder="e.g. Hilux, Corolla"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="vehicle_year_from">Year From</Label>
+                    <Select value={formData.vehicle_year_from} onValueChange={(value) => setFormData({ ...formData, vehicle_year_from: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="From year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEAR_OPTIONS.map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="vehicle_year_to">Year To</Label>
+                    <Select value={formData.vehicle_year_to} onValueChange={(value) => setFormData({ ...formData, vehicle_year_to: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="To year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEAR_OPTIONS.map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="condition">Condition *</Label>
               <Select value={formData.condition} onValueChange={(value) => setFormData({ ...formData, condition: value })}>

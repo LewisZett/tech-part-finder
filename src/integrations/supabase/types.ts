@@ -159,6 +159,10 @@ export type Database = {
           status: string | null
           supplier_id: string
           updated_at: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_year_from: number | null
+          vehicle_year_to: number | null
         }
         Insert: {
           category: string
@@ -173,6 +177,10 @@ export type Database = {
           status?: string | null
           supplier_id: string
           updated_at?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year_from?: number | null
+          vehicle_year_to?: number | null
         }
         Update: {
           category?: string
@@ -187,6 +195,10 @@ export type Database = {
           status?: string | null
           supplier_id?: string
           updated_at?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year_from?: number | null
+          vehicle_year_to?: number | null
         }
         Relationships: []
       }
