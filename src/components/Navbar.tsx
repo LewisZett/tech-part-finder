@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 import { AnimatedMenuIcon } from "@/components/AnimatedMenuIcon";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/gear-puzzle-icon.png";
 
 interface NavbarProps {
@@ -13,7 +14,7 @@ const Navbar = ({ user }: NavbarProps) => {
   const { theme, setTheme } = useTheme();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm shadow-medium">
+    <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm shadow-soft">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
@@ -22,8 +23,8 @@ const Navbar = ({ user }: NavbarProps) => {
               onClick={() => navigate("/")}
               className="flex items-center gap-2 text-xl font-bold text-primary font-orbitron"
             >
-              <img src={logo} alt="PARTSPRO logo" className="h-6 w-6 object-contain" />
-              PARTSPRO
+              <img src={logo} alt="PartsPro logo" className="h-6 w-6 object-contain" />
+              PartsPro
             </button>
           </div>
           
@@ -41,12 +42,13 @@ const Navbar = ({ user }: NavbarProps) => {
             </button>
             
             {!user && (
-              <button
+              <Button
                 onClick={() => navigate("/auth")}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-md font-semibold hover:bg-primary/90 transition-colors"
+                variant="default"
+                size="sm"
               >
-                SIGN IN
-              </button>
+                Sign In
+              </Button>
             )}
           </div>
         </div>

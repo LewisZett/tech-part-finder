@@ -62,7 +62,6 @@ const Auth = () => {
         },
       });
     } catch (error) {
-      // Silently fail logging - don't disrupt user experience
       console.error('Failed to log security event:', error);
     }
   };
@@ -87,7 +86,6 @@ const Auth = () => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         
         if (error) {
-          // Log failed login attempt
           await logSecurityEvent('login_failed', 'medium', undefined, {
             email,
             error_code: error.status,
@@ -96,7 +94,6 @@ const Auth = () => {
           throw error;
         }
 
-        // Log successful login
         if (data.user) {
           await logSecurityEvent('login_success', 'low', data.user.id, {
             email: data.user.email,
@@ -132,7 +129,6 @@ const Auth = () => {
         });
         
         if (error) {
-          // Log failed signup attempt
           await logSecurityEvent('signup_failed', 'medium', undefined, {
             email,
             error_code: error.status,
@@ -141,7 +137,6 @@ const Auth = () => {
           throw error;
         }
 
-        // Log successful signup
         if (data.user) {
           await logSecurityEvent('signup_success', 'low', data.user.id, {
             email: data.user.email,
@@ -151,7 +146,7 @@ const Auth = () => {
         
         toast({
           title: "Account created!",
-          description: "Welcome to PartsMatch Pro.",
+          description: "Welcome to PartsPro.",
         });
       }
     } catch (error: any) {
@@ -167,21 +162,21 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/10"></div>
-      <Card className="w-full max-w-md shadow-large relative z-10 glass-card glow-cyan">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5"></div>
+      <Card className="w-full max-w-md shadow-large relative z-10">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center glow-cyan animate-pulse">
-              <img src={logo} alt="PARTSPRO" className="h-12 w-12 object-contain" />
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center">
+              <img src={logo} alt="PartsPro" className="h-12 w-12 object-contain" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            {isLogin ? "WELCOME BACK" : "JOIN THE NETWORK"}
+          <CardTitle className="text-2xl font-bold text-foreground">
+            {isLogin ? "Welcome back" : "Create your account"}
           </CardTitle>
-          <CardDescription className="text-foreground/70">
+          <CardDescription className="text-muted-foreground">
             {isLogin
-              ? "Access your command center"
-              : "Register for exclusive access"}
+              ? "Sign in to access your dashboard"
+              : "Join Zimbabwe's spare parts marketplace"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -189,23 +184,23 @@ const Auth = () => {
             {!isLogin && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-foreground font-orbitron">FULL NAME</Label>
+                  <Label htmlFor="fullName">Full Name</Label>
                   <Input
                     id="fullName"
                     placeholder="John Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required={!isLogin}
-                    className="border-primary/30 focus:border-primary"
+                    className="border-border focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tradeType" className="text-foreground font-orbitron">YOUR TRADE</Label>
+                  <Label htmlFor="tradeType">Your Trade</Label>
                   <Select value={tradeType} onValueChange={setTradeType} required={!isLogin}>
-                    <SelectTrigger className="border-primary/30 focus:border-primary">
+                    <SelectTrigger className="border-border focus:border-primary">
                       <SelectValue placeholder="Select your trade" />
                     </SelectTrigger>
-                    <SelectContent className="bg-card border-primary/30">
+                    <SelectContent>
                       <SelectItem value="phone_repair">Phone Repair</SelectItem>
                       <SelectItem value="computer_tech">Computer Tech</SelectItem>
                       <SelectItem value="car_mechanic">Car Mechanic</SelectItem>
@@ -219,19 +214,19 @@ const Auth = () => {
               </>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground font-orbitron">EMAIL</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="user@domain.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="border-primary/30 focus:border-primary"
+                className="border-border focus:border-primary"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground font-orbitron">PASSWORD</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -239,22 +234,23 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="border-primary/30 focus:border-primary"
+                className="border-border focus:border-primary"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "LOADING..." : isLogin ? "ACCESS" : "REGISTER"}
+              {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+            </span>
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:text-primary/80 transition-colors font-orbitron"
+              className="text-primary hover:text-primary/80 transition-colors font-medium"
             >
-              {isLogin
-                ? "NEW USER? REGISTER HERE"
-                : "EXISTING USER? LOGIN HERE"}
+              {isLogin ? "Sign up" : "Sign in"}
             </button>
           </div>
         </CardContent>

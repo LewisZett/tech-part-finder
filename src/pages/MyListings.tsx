@@ -465,7 +465,7 @@ const MyListings = () => {
                   className="w-full h-12 bg-primary hover:bg-primary/90"
                   onClick={() => setPdfDialogOpen(true)}
                 >
-                  UPLOAD PDF
+                  Upload PDF
                 </Button>
                 <a href="#" className="text-xs text-primary hover:underline">
                   Download sample PDF format
@@ -484,7 +484,7 @@ const MyListings = () => {
                   className="w-full h-12 bg-primary hover:bg-primary/90"
                   onClick={() => setTextDialogOpen(true)}
                 >
-                  PASTE LIST
+                  Paste List
                 </Button>
                 <a href="#" className="text-xs text-primary hover:underline">
                   See paste format example
@@ -514,10 +514,10 @@ const MyListings = () => {
               {/* Main Action Button */}
               <Button 
                 onClick={() => { setDialogType("part"); setDialogOpen(true); }}
-                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-white"
+                className="w-full h-14 text-lg font-semibold bg-teal hover:bg-teal/90 text-teal-foreground"
               >
                 <Plus className="mr-2 h-5 w-5" />
-                LIST A SPARE PART
+                List a Spare Part
               </Button>
 
               {partsInCategory > 0 && (
@@ -637,9 +637,9 @@ const MyListings = () => {
                     </div>
                     <Button 
                       onClick={() => { setDialogType("part"); setDialogOpen(true); }}
-                      className="bg-teal hover:bg-teal/90 text-white h-14 px-8 text-lg font-bold"
+                      className="bg-teal hover:bg-teal/90 text-teal-foreground h-14 px-8 text-lg font-semibold"
                     >
-                      LIST YOUR FIRST SPARE PART
+                      List Your First Spare Part
                     </Button>
                   </div>
                 </Card>
@@ -650,10 +650,10 @@ const MyListings = () => {
               {/* Main Action Button */}
               <Button 
                 onClick={() => { setDialogType("request"); setDialogOpen(true); }}
-                className="w-full h-14 text-lg font-bold bg-teal hover:bg-teal/90 text-white"
+                className="w-full h-14 text-lg font-semibold bg-teal hover:bg-teal/90 text-teal-foreground"
               >
                 <Plus className="mr-2 h-5 w-5" />
-                CREATE REQUEST
+                Create Request
               </Button>
 
               {requestsInCategory > 0 && (
@@ -745,9 +745,9 @@ const MyListings = () => {
                     </div>
                     <Button 
                       onClick={() => { setDialogType("request"); setDialogOpen(true); }}
-                      className="bg-teal hover:bg-teal/90 text-white h-14 px-8 text-lg font-bold"
+                      className="bg-teal hover:bg-teal/90 text-teal-foreground h-14 px-8 text-lg font-semibold"
                     >
-                      CREATE REQUEST
+                      Create Request
                     </Button>
                   </div>
                 </Card>
