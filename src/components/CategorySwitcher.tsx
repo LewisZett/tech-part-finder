@@ -20,15 +20,14 @@ export function CategorySwitcher() {
                 onClick={() => setSelectedCategory(category)}
                 className={cn(
                   "flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all whitespace-nowrap",
-                  "min-w-[140px] md:min-w-0",
+                  "min-w-[120px] md:min-w-0",
                   isActive
-                    ? "bg-teal text-white"
+                    ? "bg-teal text-teal-foreground"
                     : "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
                 <span className="text-lg">{config.icon}</span>
-                <span className="hidden sm:inline">{config.label}</span>
-                <span className="sm:hidden">{config.label.split(" ")[0]}</span>
+                <span>{config.label}</span>
               </button>
             );
           })}

@@ -9,8 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, ShoppingCart, MapPin } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import { useCategory, categoryConfigs } from "@/contexts/CategoryContext";
+import { EmptyState } from "@/components/EmptyState";
+import { SkeletonCardGrid } from "@/components/ui/skeleton-card";
+import { PartImagePlaceholder } from "@/components/PartImagePlaceholder";
 
 const Browse = () => {
   const [user, setUser] = useState<any>(null);
@@ -24,35 +27,23 @@ const Browse = () => {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser(session.user);
-        fetchData();
-      } else {
-        navigate("/auth");
-      }
+      setUser(session?.user ?? null);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      if (!session) {
-        navigate("/auth");
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
-  // Refetch when category changes
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    fetchData();
   }, [selectedCategory]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Map category to database category value
       const categoryMap: Record<string, string> = {
         phone: "Phone Spare Parts",
         tv: "TV Spare Parts",
@@ -107,7 +98,15 @@ const Browse = () => {
   };
 
   const handleCreateMatch = async (type: "part" | "request", itemId: string, ownerId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to contact sellers or post requests.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
 
     try {
       const matchData = type === "part"
@@ -143,7 +142,7 @@ const Browse = () => {
 
       toast({
         title: "Match Created!",
-        description: "Notifications sent. You can now start chatting with this user.",
+        description: "You can now start chatting with this user.",
       });
       navigate("/matches");
     } catch (error: any) {
@@ -169,7 +168,6 @@ const Browse = () => {
       request.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get category icon for badge
   const getCategoryIcon = (category: string) => {
     if (category.toLowerCase().includes("phone")) return "📱";
     if (category.toLowerCase().includes("tv")) return "📺";
@@ -178,205 +176,196 @@ const Browse = () => {
     return "📦";
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4 glow-cyan"></div>
-          <p className="text-primary font-orbitron text-xl">LOADING...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold mb-2 text-foreground text-center font-orbitron">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground text-center font-orbitron">
             {config.label}
           </h1>
-          <p className="text-muted-foreground mb-6 text-center font-rajdhani text-lg">
+          <p className="text-muted-foreground mb-6 text-center text-lg">
             Zimbabwe's Spare Parts Marketplace
           </p>
 
           <div className="mb-6 relative max-w-xl mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder={config.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 border-primary/30 focus:border-primary bg-card/50 font-rajdhani"
+              className="pl-10 h-12 border-border focus:border-primary bg-card/50"
             />
           </div>
 
-          <Tabs defaultValue="parts" className="space-y-6">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-card/50 border border-primary/30">
-              <TabsTrigger value="parts" className="font-orbitron data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                SPARE PARTS ({filteredParts.length})
-              </TabsTrigger>
-              <TabsTrigger value="requests" className="font-orbitron data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                REQUESTS ({filteredRequests.length})
-              </TabsTrigger>
-            </TabsList>
+          {loading ? (
+            <SkeletonCardGrid count={6} />
+          ) : (
+            <Tabs defaultValue="parts" className="space-y-6">
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-card border border-border">
+                <TabsTrigger value="parts" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  Spare Parts ({filteredParts.length})
+                </TabsTrigger>
+                <TabsTrigger value="requests" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                  Requests ({filteredRequests.length})
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="parts" className="space-y-4">
-              {filteredParts.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Package className="h-16 w-16 text-primary mb-4 glow-cyan" />
-                    <p className="text-foreground/70 font-rajdhani text-lg">NO SPARE PARTS FOUND</p>
-                    <p className="text-muted-foreground text-sm mt-2">Try switching categories or check back later</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredParts.map((part) => (
-                    <Card key={part.id} className="hover:scale-[1.02] transition-transform glass-card glow-cyan relative">
-                      {/* Category badge */}
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
-                          {getCategoryIcon(part.category)} {part.category.split(" ")[0]}
-                        </Badge>
-                      </div>
-                      {part.image_url && (
-                        <div className="w-full h-48 overflow-hidden rounded-t-lg relative">
-                          <img 
-                            src={part.image_url} 
-                            alt={part.part_name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent"></div>
+              <TabsContent value="parts" className="space-y-4">
+                {filteredParts.length === 0 ? (
+                  <EmptyState
+                    type={searchQuery ? "search" : "parts"}
+                    onAction={() => searchQuery ? setSearchQuery("") : navigate("/my-listings")}
+                  />
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredParts.map((part) => (
+                      <Card key={part.id} className="hover:shadow-lg transition-shadow overflow-hidden relative">
+                        <div className="absolute top-3 right-3 z-10">
+                          <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                            {getCategoryIcon(part.category)} {part.category.split(" ")[0]}
+                          </Badge>
                         </div>
-                      )}
-                      <CardHeader>
-                        <div className="flex items-start justify-between mb-2">
-                          <CardTitle className="text-lg text-primary font-orbitron">{part.part_name}</CardTitle>
-                          <Badge variant="secondary" className="bg-secondary/20 text-secondary border border-secondary/40">{part.condition}</Badge>
-                        </div>
-                        <CardDescription className="space-y-1">
-                          {/* Vehicle info for car parts */}
-                          {part.category === "Car Spare Parts" && part.vehicle_make && (
-                            <div className="text-sm font-medium text-primary/80 mb-1">
-                              🚗 {part.vehicle_make}
-                              {part.vehicle_model && ` ${part.vehicle_model}`}
-                              {part.vehicle_year_from && (
-                                <span className="text-foreground/60">
-                                  {" "}({part.vehicle_year_from}{part.vehicle_year_to && part.vehicle_year_to !== part.vehicle_year_from ? `-${part.vehicle_year_to}` : ""})
-                                </span>
+                        {part.image_url ? (
+                          <div className="w-full h-48 overflow-hidden relative">
+                            <img 
+                              src={part.image_url} 
+                              alt={part.part_name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent"></div>
+                          </div>
+                        ) : (
+                          <PartImagePlaceholder category={part.category} />
+                        )}
+                        <CardHeader>
+                          <div className="flex items-start justify-between mb-2">
+                            <CardTitle className="text-lg text-foreground">{part.part_name}</CardTitle>
+                            <Badge variant="outline">{part.condition}</Badge>
+                          </div>
+                          <CardDescription className="space-y-1">
+                            {part.category === "Car Spare Parts" && part.vehicle_make && (
+                              <div className="text-sm font-medium text-primary/80 mb-1">
+                                🚗 {part.vehicle_make}
+                                {part.vehicle_model && ` ${part.vehicle_model}`}
+                                {part.vehicle_year_from && (
+                                  <span className="text-muted-foreground">
+                                    {" "}({part.vehicle_year_from}{part.vehicle_year_to && part.vehicle_year_to !== part.vehicle_year_from ? `-${part.vehicle_year_to}` : ""})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {part.location && (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 mr-1 text-teal" />
+                                {part.location}
+                              </div>
+                            )}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {part.description && (
+                            <p className="text-sm text-muted-foreground mb-3">{part.description}</p>
+                          )}
+                          {part.price && (
+                            <p className="text-2xl font-bold text-primary mb-3">${part.price}</p>
+                          )}
+                          <div className="text-sm text-muted-foreground mb-3">
+                            Listed by: {part.public_profiles?.full_name || "Anonymous"} ({part.public_profiles?.trade_type})
+                          </div>
+                          {part.supplier_id !== user?.id && (
+                            <>
+                              <Button
+                                className="w-full mb-2 bg-teal hover:bg-teal/90 text-teal-foreground"
+                                onClick={() => handleCreateMatch("part", part.id, part.supplier_id)}
+                              >
+                                Contact Supplier
+                              </Button>
+                              {user && (
+                                <AiMatchSuggestions 
+                                  itemId={part.id} 
+                                  itemType="part" 
+                                  itemData={part}
+                                />
                               )}
-                            </div>
+                            </>
                           )}
-                          {part.location && (
-                            <div className="flex items-center text-sm text-foreground/70">
-                              <MapPin className="h-4 w-4 mr-1 text-teal" />
-                              {part.location}
-                            </div>
-                          )}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {part.description && (
-                          <p className="text-sm text-foreground/70 mb-3 font-rajdhani">{part.description}</p>
-                        )}
-                        {part.price && (
-                          <p className="text-2xl font-bold text-primary mb-3 glow-cyan">${part.price}</p>
-                        )}
-                        <div className="text-sm text-foreground/60 mb-3 font-rajdhani">
-                          LISTED BY: {part.public_profiles?.full_name || "ANONYMOUS"} ({part.public_profiles?.trade_type})
-                        </div>
-                        {part.supplier_id !== user?.id && (
-                          <>
-                            <Button
-                              className="w-full mb-2 bg-teal hover:bg-teal/90"
-                              onClick={() => handleCreateMatch("part", part.id, part.supplier_id)}
-                            >
-                              CONTACT SUPPLIER
-                            </Button>
-                            <AiMatchSuggestions 
-                              itemId={part.id} 
-                              itemType="part" 
-                              itemData={part}
-                            />
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
 
-            <TabsContent value="requests" className="space-y-4">
-              {filteredRequests.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <ShoppingCart className="h-16 w-16 text-secondary mb-4 glow-purple" />
-                    <p className="text-foreground/70 font-rajdhani text-lg">NO REQUESTS FOUND</p>
-                    <p className="text-muted-foreground text-sm mt-2">Try switching categories or check back later</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredRequests.map((request) => (
-                    <Card key={request.id} className="hover:scale-[1.02] transition-transform glass-card glow-purple relative">
-                      {/* Category badge */}
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
-                          {getCategoryIcon(request.category)} {request.category.split(" ")[0]}
-                        </Badge>
-                      </div>
-                      <CardHeader>
-                        <div className="flex items-start justify-between mb-2">
-                          <CardTitle className="text-lg text-secondary font-orbitron">{request.part_name}</CardTitle>
-                          {request.condition_preference && (
-                            <Badge variant="secondary" className="bg-secondary/20 text-secondary border border-secondary/40">{request.condition_preference}</Badge>
-                          )}
+              <TabsContent value="requests" className="space-y-4">
+                {filteredRequests.length === 0 ? (
+                  <EmptyState
+                    type={searchQuery ? "search" : "requests"}
+                    onAction={() => searchQuery ? setSearchQuery("") : navigate("/my-listings?action=create-request")}
+                  />
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredRequests.map((request) => (
+                      <Card key={request.id} className="hover:shadow-lg transition-shadow overflow-hidden relative">
+                        <div className="absolute top-3 right-3 z-10">
+                          <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                            {getCategoryIcon(request.category)} {request.category.split(" ")[0]}
+                          </Badge>
                         </div>
-                        <CardDescription className="space-y-1">
-                          {request.location && (
-                            <div className="flex items-center text-sm text-foreground/70">
-                              <MapPin className="h-4 w-4 mr-1 text-teal" />
-                              {request.location}
-                            </div>
+                        <CardHeader className="pt-12">
+                          <div className="flex items-start justify-between mb-2">
+                            <CardTitle className="text-lg text-secondary">{request.part_name}</CardTitle>
+                            {request.condition_preference && (
+                              <Badge variant="outline">{request.condition_preference}</Badge>
+                            )}
+                          </div>
+                          <CardDescription className="space-y-1">
+                            {request.location && (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <MapPin className="h-4 w-4 mr-1 text-teal" />
+                                {request.location}
+                              </div>
+                            )}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {request.description && (
+                            <p className="text-sm text-muted-foreground mb-3">{request.description}</p>
                           )}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {request.description && (
-                          <p className="text-sm text-foreground/70 mb-3 font-rajdhani">{request.description}</p>
-                        )}
-                        {request.max_price && (
-                          <p className="text-lg font-semibold text-accent mb-3 glow-magenta">
-                            BUDGET: UP TO ${request.max_price}
-                          </p>
-                        )}
-                        <div className="text-sm text-foreground/60 mb-3 font-rajdhani">
-                          REQUESTED BY: {request.public_profiles?.full_name || "ANONYMOUS"} ({request.public_profiles?.trade_type})
-                        </div>
-                        {request.requester_id !== user?.id && (
-                          <>
-                            <Button
-                              className="w-full mb-2"
-                              variant="secondary"
-                              onClick={() => handleCreateMatch("request", request.id, request.requester_id)}
-                            >
-                              I HAVE THIS SPARE PART
-                            </Button>
-                            <AiMatchSuggestions 
-                              itemId={request.id} 
-                              itemType="request" 
-                              itemData={request}
-                            />
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                          {request.max_price && (
+                            <p className="text-lg font-semibold text-accent mb-3">
+                              Budget: Up to ${request.max_price}
+                            </p>
+                          )}
+                          <div className="text-sm text-muted-foreground mb-3">
+                            Requested by: {request.public_profiles?.full_name || "Anonymous"} ({request.public_profiles?.trade_type})
+                          </div>
+                          {request.requester_id !== user?.id && (
+                            <>
+                              <Button
+                                className="w-full mb-2"
+                                variant="secondary"
+                                onClick={() => handleCreateMatch("request", request.id, request.requester_id)}
+                              >
+                                I Have This Part
+                              </Button>
+                              {user && (
+                                <AiMatchSuggestions 
+                                  itemId={request.id} 
+                                  itemType="request" 
+                                  itemData={request}
+                                />
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
       </div>
     </AppLayout>

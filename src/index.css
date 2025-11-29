@@ -10,7 +10,7 @@
     --card-foreground: 220 20% 15%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
-    --primary: 210 100% 25%;
+    --primary: 210 100% 30%;
     --primary-foreground: 0 0% 100%;
     --secondary: 158 64% 42%;
     --secondary-foreground: 0 0% 100%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 210 100% 25%;
+    --ring: 210 100% 30%;
     --radius: 0.5rem;
     
     --sidebar-background: 220 20% 15%;
@@ -40,50 +40,50 @@
     --teal: 158 100% 39%;
     --teal-foreground: 0 0% 100%;
 
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
-    --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.16);
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 
   .dark {
-    --background: 220 20% 12%;
+    --background: 220 20% 10%;
     --foreground: 0 0% 98%;
-    --card: 220 20% 15%;
+    --card: 220 20% 13%;
     --card-foreground: 0 0% 98%;
-    --popover: 220 20% 15%;
+    --popover: 220 20% 13%;
     --popover-foreground: 0 0% 98%;
-    --primary: 210 100% 35%;
+    --primary: 210 100% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 158 64% 45%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 220 15% 20%;
-    --muted-foreground: 220 10% 65%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 60%;
     --accent: 158 64% 45%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 85% 65%;
+    --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 25%;
-    --input: 220 15% 25%;
+    --border: 220 15% 22%;
+    --input: 220 15% 22%;
     --ring: 158 64% 45%;
 
-    --sidebar-background: 220 20% 10%;
+    --sidebar-background: 220 20% 8%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 158 64% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent: 220 20% 13%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 220 20% 20%;
+    --sidebar-border: 220 20% 18%;
     --sidebar-ring: 158 64% 45%;
 
     --orange: 25 95% 58%;
     --orange-foreground: 0 0% 100%;
 
-    --teal: 158 100% 39%;
+    --teal: 158 100% 42%;
     --teal-foreground: 0 0% 100%;
 
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-large: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -96,7 +96,7 @@
     background-image: url('/src/assets/gear-puzzle-bg.png');
     background-position: center;
     background-repeat: no-repeat;
-    background-size: 60vmin;
+    background-size: 50vmin;
     background-attachment: fixed;
     position: relative;
   }
@@ -104,7 +104,7 @@
     content: '';
     position: fixed;
     inset: 0;
-    background-color: hsl(var(--background) / 0.94);
+    background-color: hsl(var(--background) / 0.96);
     pointer-events: none;
     z-index: 0;
   }
