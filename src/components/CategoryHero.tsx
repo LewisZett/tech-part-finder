@@ -1,14 +1,25 @@
-import { useCategory } from "@/contexts/CategoryContext";
+import { useCategory, Category } from "@/contexts/CategoryContext";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import phonePartsThumbnail from "@/assets/phone-parts-thumbnail.png";
+import computerPartsThumbnail from "@/assets/computer-parts-thumbnail.png";
+import tvPartsThumbnail from "@/assets/tv-parts-thumbnail.png";
+import carPartsThumbnail from "@/assets/car-parts-thumbnail.png";
 
 const categoryBackgrounds: Record<string, string> = {
   phone: "from-blue-900/90 via-blue-800/80 to-slate-900/90",
   tv: "from-purple-900/90 via-indigo-800/80 to-slate-900/90",
   computer: "from-emerald-900/90 via-teal-800/80 to-slate-900/90",
   car: "from-orange-900/90 via-red-800/80 to-slate-900/90",
+};
+
+const categoryImages: Record<Category, string> = {
+  phone: phonePartsThumbnail,
+  tv: tvPartsThumbnail,
+  computer: computerPartsThumbnail,
+  car: carPartsThumbnail,
 };
 
 export function CategoryHero() {
@@ -32,8 +43,12 @@ export function CategoryHero() {
       </div>
 
       <div className="container relative z-10 max-w-4xl mx-auto px-4">
-        <div className="text-5xl md:text-6xl mb-4">
-          {config.icon}
+        <div className="mb-4 flex justify-center">
+          <img 
+            src={categoryImages[selectedCategory]} 
+            alt={config.label}
+            className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover shadow-lg border-2 border-white/20"
+          />
         </div>
 
         <h1 className="font-orbitron text-3xl md:text-5xl font-bold text-white mb-3">

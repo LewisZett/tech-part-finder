@@ -1,7 +1,18 @@
 import { useCategory, categoryConfigs, Category } from "@/contexts/CategoryContext";
 import { cn } from "@/lib/utils";
+import phonePartsThumbnail from "@/assets/phone-parts-thumbnail.png";
+import computerPartsThumbnail from "@/assets/computer-parts-thumbnail.png";
+import tvPartsThumbnail from "@/assets/tv-parts-thumbnail.png";
+import carPartsThumbnail from "@/assets/car-parts-thumbnail.png";
 
 const categories: Category[] = ["phone", "tv", "computer", "car"];
+
+const categoryImages: Record<Category, string> = {
+  phone: phonePartsThumbnail,
+  tv: tvPartsThumbnail,
+  computer: computerPartsThumbnail,
+  car: carPartsThumbnail,
+};
 
 export function CategorySwitcher() {
   const { selectedCategory, setSelectedCategory } = useCategory();
@@ -26,7 +37,11 @@ export function CategorySwitcher() {
                     : "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
-                <span className="text-lg">{config.icon}</span>
+                <img 
+                  src={categoryImages[category]} 
+                  alt={config.label}
+                  className="w-6 h-6 rounded object-cover"
+                />
                 <span>{config.label}</span>
               </button>
             );
