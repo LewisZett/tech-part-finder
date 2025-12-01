@@ -1,6 +1,7 @@
 import { Package } from "lucide-react";
 import phonePartsThumbnail from "@/assets/phone-parts-thumbnail.png";
 import computerPartsThumbnail from "@/assets/computer-parts-thumbnail.png";
+import tvPartsThumbnail from "@/assets/tv-parts-thumbnail.png";
 
 interface PartImagePlaceholderProps {
   category?: string;
@@ -8,13 +9,13 @@ interface PartImagePlaceholderProps {
 }
 
 const categoryIcons: Record<string, string> = {
-  "TV Spare Parts": "📺",
   "Car Spare Parts": "🚗",
 };
 
 const categoryThumbnails: Record<string, string> = {
   "Phone Spare Parts": phonePartsThumbnail,
   "Computer Spare Parts": computerPartsThumbnail,
+  "TV Spare Parts": tvPartsThumbnail,
 };
 
 export function PartImagePlaceholder({ category, className = "" }: PartImagePlaceholderProps) {
