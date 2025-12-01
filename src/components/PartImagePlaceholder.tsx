@@ -2,20 +2,18 @@ import { Package } from "lucide-react";
 import phonePartsThumbnail from "@/assets/phone-parts-thumbnail.png";
 import computerPartsThumbnail from "@/assets/computer-parts-thumbnail.png";
 import tvPartsThumbnail from "@/assets/tv-parts-thumbnail.png";
+import carPartsThumbnail from "@/assets/car-parts-thumbnail.png";
 
 interface PartImagePlaceholderProps {
   category?: string;
   className?: string;
 }
 
-const categoryIcons: Record<string, string> = {
-  "Car Spare Parts": "🚗",
-};
-
 const categoryThumbnails: Record<string, string> = {
   "Phone Spare Parts": phonePartsThumbnail,
   "Computer Spare Parts": computerPartsThumbnail,
   "TV Spare Parts": tvPartsThumbnail,
+  "Car Spare Parts": carPartsThumbnail,
 };
 
 export function PartImagePlaceholder({ category, className = "" }: PartImagePlaceholderProps) {
@@ -34,15 +32,9 @@ export function PartImagePlaceholder({ category, className = "" }: PartImagePlac
     );
   }
 
-  const icon = category ? categoryIcons[category] : null;
-
   return (
     <div className={`w-full h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center ${className}`}>
-      {icon ? (
-        <span className="text-6xl opacity-30">{icon}</span>
-      ) : (
-        <Package className="h-16 w-16 text-muted-foreground/30" />
-      )}
+      <Package className="h-16 w-16 text-muted-foreground/30" />
     </div>
   );
 }
