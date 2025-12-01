@@ -13,7 +13,7 @@ const categoryIcons: Record<string, string> = {
 };
 
 export function PartImagePlaceholder({ category, className = "" }: PartImagePlaceholderProps) {
-  // Use custom thumbnail for phone parts
+  // Use custom thumbnail image for phone parts category
   if (category === "Phone Spare Parts") {
     return (
       <div className={`w-full h-48 overflow-hidden ${className}`}>
