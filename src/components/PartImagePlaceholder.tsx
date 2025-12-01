@@ -1,5 +1,6 @@
 import { Package } from "lucide-react";
 import phonePartsThumbnail from "@/assets/phone-parts-thumbnail.png";
+import computerPartsThumbnail from "@/assets/computer-parts-thumbnail.png";
 
 interface PartImagePlaceholderProps {
   category?: string;
@@ -8,18 +9,24 @@ interface PartImagePlaceholderProps {
 
 const categoryIcons: Record<string, string> = {
   "TV Spare Parts": "📺",
-  "Computer Spare Parts": "🖥️",
   "Car Spare Parts": "🚗",
 };
 
+const categoryThumbnails: Record<string, string> = {
+  "Phone Spare Parts": phonePartsThumbnail,
+  "Computer Spare Parts": computerPartsThumbnail,
+};
+
 export function PartImagePlaceholder({ category, className = "" }: PartImagePlaceholderProps) {
-  // Use custom thumbnail image for phone parts category
-  if (category === "Phone Spare Parts") {
+  // Use custom thumbnail image if available
+  const thumbnail = category ? categoryThumbnails[category] : null;
+  
+  if (thumbnail) {
     return (
       <div className={`w-full h-48 overflow-hidden ${className}`}>
         <img 
-          src={phonePartsThumbnail} 
-          alt="Phone Spare Parts" 
+          src={thumbnail} 
+          alt={category} 
           className="w-full h-full object-cover"
         />
       </div>
