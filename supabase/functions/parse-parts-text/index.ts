@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Valid categories for the marketplace
+const VALID_CATEGORIES = [
+  "Phone Spare Parts",
+  "TV Spare Parts", 
+  "Computer Spare Parts",
+  "Car Spare Parts"
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,25 +34,37 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Build messages for AI
-    const messages: any[] = [
+    const messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [
       {
         role: 'system',
-        content: 'You are an expert at identifying construction parts from text descriptions and images. For images, carefully analyze what part is shown and provide its technical name. Parse the data and return valid JSON only.'
+        content: `You are an expert at identifying spare parts from text descriptions and images. For images, carefully analyze what part is shown and provide its technical name. Parse the data and return valid JSON only.
+
+IMPORTANT: Categories MUST be exactly one of these values:
+- "Phone Spare Parts" (for mobile phone components: screens, batteries, charging ports, etc.)
+- "TV Spare Parts" (for television components: panels, power boards, remote sensors, etc.)
+- "Computer Spare Parts" (for computer components: RAM, CPUs, GPUs, motherboards, SSDs, etc.)
+- "Car Spare Parts" (for automotive parts: bumpers, engines, transmissions, brake pads, etc.)
+
+Classify each part into the most appropriate category based on its typical use.`
       }
     ];
 
     // Build user message content
-    const userContent: any[] = [];
+    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
     
     if (text) {
       userContent.push({
         type: 'text',
         text: `Extract all parts from this text. For each part, identify:
 - part_name (the name/model of the part)
-- category (classify as: electrical, plumbing, hvac, structural, roofing, flooring, doors, windows, or other)
+- category (MUST be exactly one of: "Phone Spare Parts", "TV Spare Parts", "Computer Spare Parts", "Car Spare Parts")
 - condition (MUST be exactly one of: "new", "used", or "refurbished")
 - price (numeric value only, extract from text if mentioned)
 - description (any additional details)
+- vehicle_make (for car parts only, e.g., "Toyota", "Honda")
+- vehicle_model (for car parts only, e.g., "Corolla", "Civic")
+- vehicle_year_from (for car parts only, starting year of compatibility)
+- vehicle_year_to (for car parts only, ending year of compatibility)
 
 Be flexible with text formats:
 - Handle bullet points, numbered lists, comma-separated, or paragraph format
@@ -56,12 +76,13 @@ Be flexible with text formats:
 - If multiple parts are on one line separated by commas or semicolons, split them
 
 Return ONLY a JSON array in this exact format:
-[{"part_name": "string", "category": "string", "condition": "new|used|refurbished", "price": number, "description": "string"}]
+[{"part_name": "string", "category": "string", "condition": "new|used|refurbished", "price": number, "description": "string", "vehicle_make": "string|null", "vehicle_model": "string|null", "vehicle_year_from": number|null, "vehicle_year_to": number|null}]
 
 Use defaults when fields aren't specified:
 - condition: "used"
 - description: ""
 - price: 0
+- vehicle fields: null (if not car parts)
 
 Text to parse:
 ${text}`
@@ -71,10 +92,10 @@ ${text}`
     if (images && images.length > 0) {
       userContent.push({
         type: 'text',
-        text: `\n\nAnalyze these ${images.length} image(s) of construction parts. For each image:
+        text: `\n\nAnalyze these ${images.length} image(s) of spare parts. For each image:
 1. Identify the part shown (be specific - include type, material, size if visible)
 2. Suggest a technical part_name based on what you see
-3. Classify the category
+3. Classify the category (MUST be one of: "Phone Spare Parts", "TV Spare Parts", "Computer Spare Parts", "Car Spare Parts")
 4. Assess the condition from the image (new/used/refurbished)
 5. Note any visible details for the description
 
@@ -135,8 +156,18 @@ Return parts from images in the same JSON format.`
       throw new Error('No parts could be extracted');
     }
 
+    // Validate and normalize categories
+    const normalizeCategory = (cat: string): string => {
+      const lower = cat.toLowerCase();
+      if (lower.includes('phone') || lower.includes('mobile')) return "Phone Spare Parts";
+      if (lower.includes('tv') || lower.includes('television')) return "TV Spare Parts";
+      if (lower.includes('computer') || lower.includes('pc') || lower.includes('laptop')) return "Computer Spare Parts";
+      if (lower.includes('car') || lower.includes('auto') || lower.includes('vehicle')) return "Car Spare Parts";
+      return "Computer Spare Parts";
+    };
+
     // Upload images to storage if provided
-    let uploadedImageUrls: string[] = [];
+    const uploadedImageUrls: string[] = [];
     if (images && images.length > 0) {
       console.log('Uploading', images.length, 'images to storage...');
       
@@ -167,13 +198,21 @@ Return parts from images in the same JSON format.`
     }
 
     // Insert parts into database
-    const partsToInsert = parts.map((part: any, index: number) => ({
+    const partsToInsert = parts.map((part: Record<string, unknown>, index: number) => ({
       supplier_id: userId,
-      part_name: part.part_name,
-      category: part.category,
-      condition: part.condition,
-      price: part.price || null,
-      description: part.description || '',
+      part_name: String(part.part_name || 'Unknown Part'),
+      category: VALID_CATEGORIES.includes(String(part.category)) 
+        ? String(part.category) 
+        : normalizeCategory(String(part.category || '')),
+      condition: ['new', 'used', 'refurbished'].includes(String(part.condition)) 
+        ? String(part.condition) 
+        : 'used',
+      price: typeof part.price === 'number' ? part.price : null,
+      description: String(part.description || ''),
+      vehicle_make: part.vehicle_make ? String(part.vehicle_make) : null,
+      vehicle_model: part.vehicle_model ? String(part.vehicle_model) : null,
+      vehicle_year_from: typeof part.vehicle_year_from === 'number' ? part.vehicle_year_from : null,
+      vehicle_year_to: typeof part.vehicle_year_to === 'number' ? part.vehicle_year_to : null,
       image_url: uploadedImageUrls[index] || null,
       status: 'available'
     }));

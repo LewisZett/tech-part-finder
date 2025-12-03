@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Check, X, Send } from "lucide-react";
+import { MessageSquare, Check, Send } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
+import type { Match, Message, PublicProfile } from "@/types/database";
 
 const messageSchema = z.object({
   content: z.string()
@@ -18,14 +20,68 @@ const messageSchema = z.object({
 });
 
 const Matches = () => {
-  const [user, setUser] = useState<any>(null);
-  const [matches, setMatches] = useState<any[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const fetchMatches = useCallback(async (userId: string) => {
+    setLoading(true);
+    try {
+      const { data: matchesData, error: matchesError } = await supabase
+        .from("matches")
+        .select(`
+          *,
+          parts(part_name, price),
+          part_requests(part_name, max_price)
+        `)
+        .or(`supplier_id.eq.${userId},requester_id.eq.${userId}`)
+        .order("created_at", { ascending: false });
+
+      if (matchesError) {
+        console.error("Error fetching matches:", matchesError);
+        setLoading(false);
+        return;
+      }
+
+      const matchesList = matchesData ?? [];
+      const supplierIds = matchesList.map((m) => m.supplier_id).filter(Boolean);
+      const requesterIds = matchesList.map((m) => m.requester_id).filter(Boolean);
+      const uniqueIds = Array.from(new Set([...supplierIds, ...requesterIds]));
+
+      let profilesById: Record<string, PublicProfile> = {};
+      if (uniqueIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("public_profiles")
+          .select("id, full_name, trade_type")
+          .in("id", uniqueIds);
+
+        if (profilesError) {
+          console.error("Error loading profiles:", profilesError);
+        } else if (profilesData) {
+          profilesById = Object.fromEntries(
+            profilesData.map((p) => [p.id, p as PublicProfile])
+          );
+        }
+      }
+
+      const matchesWithProfiles: Match[] = matchesList.map((m) => ({
+        ...m,
+        supplier: profilesById[m.supplier_id] ?? null,
+        requester: profilesById[m.requester_id] ?? null,
+      }));
+
+      setMatches(matchesWithProfiles);
+    } catch (e) {
+      console.error("Error in fetchMatches:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -45,10 +101,24 @@ const Matches = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, fetchMatches]);
 
   useEffect(() => {
     if (!selectedMatch) return;
+
+    const fetchMessages = async (matchId: string) => {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("match_id", matchId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching messages:", error);
+        return;
+      }
+      if (data) setMessages(data as Message[]);
+    };
 
     fetchMessages(selectedMatch.id);
 
@@ -63,7 +133,7 @@ const Matches = () => {
           filter: `match_id=eq.${selectedMatch.id}`,
         },
         (payload) => {
-          setMessages((current) => [...current, payload.new]);
+          setMessages((current) => [...current, payload.new as Message]);
         }
       )
       .subscribe();
@@ -72,68 +142,6 @@ const Matches = () => {
       supabase.removeChannel(channel);
     };
   }, [selectedMatch]);
-
-  const fetchMatches = async (userId: string) => {
-    setLoading(true);
-    try {
-      const { data: matchesData, error: matchesError } = await supabase
-        .from("matches")
-        .select(`
-          *,
-          parts(part_name, price),
-          part_requests(part_name, max_price)
-        `)
-        .or(`supplier_id.eq.${userId},requester_id.eq.${userId}`)
-        .order("created_at", { ascending: false });
-
-      if (matchesError) {
-        console.error("Error fetching matches:", matchesError);
-        setLoading(false);
-        return;
-      }
-
-      const matches = matchesData ?? [];
-      const supplierIds = matches.map((m: any) => m.supplier_id).filter(Boolean);
-      const requesterIds = matches.map((m: any) => m.requester_id).filter(Boolean);
-      const uniqueIds = Array.from(new Set([...supplierIds, ...requesterIds]));
-
-      let profilesById: Record<string, any> = {};
-      if (uniqueIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("public_profiles")
-          .select("id, full_name, trade_type")
-          .in("id", uniqueIds);
-
-        if (profilesError) {
-          console.error("Error loading profiles:", profilesError);
-        } else if (profilesData) {
-          profilesById = Object.fromEntries(profilesData.map((p: any) => [p.id, p]));
-        }
-      }
-
-      const matchesWithProfiles = matches.map((m: any) => ({
-        ...m,
-        supplier: profilesById[m.supplier_id] ?? null,
-        requester: profilesById[m.requester_id] ?? null,
-      }));
-
-      setMatches(matchesWithProfiles);
-    } catch (e) {
-      console.error("Error in fetchMatches:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMessages = async (matchId: string) => {
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("match_id", matchId)
-      .order("created_at", { ascending: true });
-
-    if (data) setMessages(data);
-  };
 
   const handleAgree = async (matchId: string, isSupplier: boolean) => {
     try {
@@ -161,18 +169,21 @@ const Matches = () => {
           : "You've agreed to connect. Waiting for the other party.",
       });
       
-      fetchMatches(user.id);
-    } catch (error: any) {
+      if (user) {
+        fetchMatches(user.id);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: errorMessage,
       });
     }
   };
 
   const sendMessage = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || !user) return;
 
     // Validate message content
     const validation = messageSchema.safeParse({ content: newMessage });
@@ -200,11 +211,12 @@ const Matches = () => {
       if (error) throw error;
 
       setNewMessage("");
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: errorMessage,
       });
     }
   };
@@ -239,9 +251,11 @@ const Matches = () => {
                 </Card>
               ) : (
                 matches.map((match) => {
-                  const isSupplier = match.supplier_id === user.id;
+                  const isSupplier = match.supplier_id === user?.id;
                   const otherUser = isSupplier ? match.requester : match.supplier;
-                  const itemName = match.parts?.[0]?.part_name || match.part_requests?.[0]?.part_name || "Unknown";
+                  const partsData = Array.isArray(match.parts) ? match.parts : match.parts ? [match.parts] : [];
+                  const requestsData = Array.isArray(match.part_requests) ? match.part_requests : match.part_requests ? [match.part_requests] : [];
+                  const itemName = partsData[0]?.part_name || requestsData[0]?.part_name || "Unknown";
                   
                   return (
                     <Card
@@ -280,10 +294,14 @@ const Matches = () => {
                 <Card className="h-[600px] flex flex-col">
                   <CardHeader>
                     <CardTitle>
-                      {selectedMatch.parts?.[0]?.part_name || selectedMatch.part_requests?.[0]?.part_name}
+                      {(() => {
+                        const partsData = Array.isArray(selectedMatch.parts) ? selectedMatch.parts : selectedMatch.parts ? [selectedMatch.parts] : [];
+                        const requestsData = Array.isArray(selectedMatch.part_requests) ? selectedMatch.part_requests : selectedMatch.part_requests ? [selectedMatch.part_requests] : [];
+                        return partsData[0]?.part_name || requestsData[0]?.part_name || "Item";
+                      })()}
                     </CardTitle>
                     <CardDescription>
-                      Chat with {selectedMatch.supplier_id === user.id 
+                      Chat with {selectedMatch.supplier_id === user?.id 
                         ? selectedMatch.requester?.full_name 
                         : selectedMatch.supplier?.full_name}
                     </CardDescription>
@@ -298,7 +316,7 @@ const Matches = () => {
                             <p className="text-sm">
                               Contact information will be shared only when both parties agree to connect.
                             </p>
-                            {selectedMatch.supplier_id === user.id ? (
+                            {selectedMatch.supplier_id === user?.id ? (
                               !selectedMatch.supplier_agreed && (
                                 <Button size="sm" onClick={() => handleAgree(selectedMatch.id, true)}>
                                   <Check className="mr-2 h-4 w-4" />
@@ -323,18 +341,18 @@ const Matches = () => {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${message.sender_id === user.id ? "justify-end" : "justify-start"}`}
+                        className={`flex ${message.sender_id === user?.id ? "justify-end" : "justify-start"}`}
                       >
                         <div
                           className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                            message.sender_id === user.id
+                            message.sender_id === user?.id
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
                           }`}
                         >
                           <p className="text-sm">{message.content}</p>
                           <p className="text-xs opacity-70 mt-1">
-                            {new Date(message.created_at).toLocaleTimeString()}
+                            {message.created_at ? new Date(message.created_at).toLocaleTimeString() : ''}
                           </p>
                         </div>
                       </div>
