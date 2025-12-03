@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
@@ -10,20 +10,81 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Search, MapPin } from "lucide-react";
-import { useCategory, categoryConfigs } from "@/contexts/CategoryContext";
+import { useCategory } from "@/contexts/CategoryContext";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonCardGrid } from "@/components/ui/skeleton-card";
 import { PartImagePlaceholder } from "@/components/PartImagePlaceholder";
+import type { User } from "@supabase/supabase-js";
+import type { Part, PartRequest, PublicProfile, CategoryKey, CATEGORY_DB_MAP } from "@/types/database";
+
+const CATEGORY_MAP: Record<CategoryKey, string> = {
+  phone: "Phone Spare Parts",
+  tv: "TV Spare Parts",
+  computer: "Computer Spare Parts",
+  car: "Car Spare Parts",
+};
 
 const Browse = () => {
-  const [user, setUser] = useState<any>(null);
-  const [parts, setParts] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [parts, setParts] = useState<Part[]>([]);
+  const [requests, setRequests] = useState<PartRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { selectedCategory, config } = useCategory();
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const dbCategory = CATEGORY_MAP[selectedCategory as CategoryKey];
+
+      const [partsRes, requestsRes] = await Promise.all([
+        supabase.from("parts").select("*").eq("status", "available").eq("category", dbCategory),
+        supabase.from("part_requests").select("*").eq("status", "active").eq("category", dbCategory),
+      ]);
+
+      const partsData = (partsRes.data ?? []) as Part[];
+      const requestsData = (requestsRes.data ?? []) as PartRequest[];
+
+      const supplierIds = partsData.map((p) => p.supplier_id);
+      const requesterIds = requestsData.map((r) => r.requester_id);
+      const uniqueIds = Array.from(new Set([...supplierIds, ...requesterIds].filter(Boolean)));
+
+      let profilesById: Record<string, PublicProfile> = {};
+      if (uniqueIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("public_profiles")
+          .select("id, full_name, trade_type")
+          .in("id", uniqueIds);
+
+        if (profilesError) {
+          console.error("Error loading profiles:", profilesError);
+        } else if (profilesData) {
+          profilesById = Object.fromEntries(
+            profilesData.map((p) => [p.id, p as PublicProfile])
+          );
+        }
+      }
+
+      const partsWithProfiles: Part[] = partsData.map((p) => ({
+        ...p,
+        public_profiles: profilesById[p.supplier_id] ?? null,
+      }));
+
+      const requestsWithProfiles: PartRequest[] = requestsData.map((r) => ({
+        ...r,
+        public_profiles: profilesById[r.requester_id] ?? null,
+      }));
+
+      setParts(partsWithProfiles);
+      setRequests(requestsWithProfiles);
+    } catch (e) {
+      console.error("Error fetching data:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -39,63 +100,7 @@ const Browse = () => {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCategory]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const categoryMap: Record<string, string> = {
-        phone: "Phone Spare Parts",
-        tv: "TV Spare Parts",
-        computer: "Computer Spare Parts",
-        car: "Car Spare Parts",
-      };
-      const dbCategory = categoryMap[selectedCategory];
-
-      const [partsRes, requestsRes] = await Promise.all([
-        supabase.from("parts").select("*").eq("status", "available").eq("category", dbCategory),
-        supabase.from("part_requests").select("*").eq("status", "active").eq("category", dbCategory),
-      ]);
-
-      const partsData = partsRes.data ?? [];
-      const requestsData = requestsRes.data ?? [];
-
-      const supplierIds = partsData.map((p: any) => p.supplier_id);
-      const requesterIds = requestsData.map((r: any) => r.requester_id);
-      const uniqueIds = Array.from(new Set([...supplierIds, ...requesterIds].filter(Boolean)));
-
-      let profilesById: Record<string, any> = {};
-      if (uniqueIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("public_profiles")
-          .select("id, full_name, trade_type")
-          .in("id", uniqueIds);
-
-        if (profilesError) {
-          console.error("Error loading profiles:", profilesError);
-        } else if (profilesData) {
-          profilesById = Object.fromEntries(profilesData.map((p: any) => [p.id, p]));
-        }
-      }
-
-      const partsWithProfiles = partsData.map((p: any) => ({
-        ...p,
-        public_profiles: profilesById[p.supplier_id] ?? null,
-      }));
-
-      const requestsWithProfiles = requestsData.map((r: any) => ({
-        ...r,
-        public_profiles: profilesById[r.requester_id] ?? null,
-      }));
-
-      setParts(partsWithProfiles);
-      setRequests(requestsWithProfiles);
-    } catch (e) {
-      console.error("Error fetching data:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchData]);
 
   const handleCreateMatch = async (type: "part" | "request", itemId: string, ownerId: string) => {
     if (!user) {
@@ -115,7 +120,18 @@ const Browse = () => {
 
       const { data: matchResult, error } = await supabase.from("matches").insert(matchData).select().single();
 
-      if (error) throw error;
+      if (error) {
+        // Check for duplicate match error
+        if (error.code === '23505') {
+          toast({
+            variant: "destructive",
+            title: "Already Matched",
+            description: "You've already created a match for this item.",
+          });
+          return;
+        }
+        throw error;
+      }
 
       let itemName = "Unknown Item";
       if (type === "part") {
@@ -145,11 +161,12 @@ const Browse = () => {
         description: "You can now start chatting with this user.",
       });
       navigate("/matches");
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: errorMessage,
       });
     }
   };
