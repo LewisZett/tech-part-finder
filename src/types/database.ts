@@ -34,6 +34,7 @@ export interface Part {
   vehicle_model?: string | null;
   vehicle_year_from?: number | null;
   vehicle_year_to?: number | null;
+  color_variant?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   // Joined data
@@ -81,6 +82,38 @@ export interface Message {
   receiver_id: string;
   content: string;
   created_at?: string | null;
+}
+
+export interface Quote {
+  id: string;
+  match_id: string;
+  sender_id: string;
+  receiver_id: string;
+  proposed_price: number;
+  message?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface Order {
+  id: string;
+  match_id?: string | null;
+  quote_id?: string | null;
+  buyer_id: string;
+  seller_id: string;
+  part_id?: string | null;
+  final_price: number;
+  status?: string | null;
+  shipping_address?: string | null;
+  shipping_carrier?: string | null;
+  tracking_number?: string | null;
+  estimated_delivery?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface Rating {

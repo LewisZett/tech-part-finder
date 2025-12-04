@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Check, Send } from "lucide-react";
+import { MessageSquare, Check, Send, ShoppingCart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
 import type { User } from "@supabase/supabase-js";
-import type { Match, Message, PublicProfile } from "@/types/database";
+import type { Match, Message, PublicProfile, Quote } from "@/types/database";
+import { QuoteDialog } from "@/components/QuoteDialog";
 
 const messageSchema = z.object({
   content: z.string()
@@ -24,6 +25,7 @@ const Matches = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -103,6 +105,20 @@ const Matches = () => {
     return () => subscription.unsubscribe();
   }, [navigate, fetchMatches]);
 
+  const fetchQuotes = useCallback(async (matchId: string) => {
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching quotes:", error);
+      return;
+    }
+    setQuotes((data || []) as Quote[]);
+  }, []);
+
   useEffect(() => {
     if (!selectedMatch) return;
 
@@ -121,6 +137,7 @@ const Matches = () => {
     };
 
     fetchMessages(selectedMatch.id);
+    fetchQuotes(selectedMatch.id);
 
     const channel = supabase
       .channel(`messages-${selectedMatch.id}`)
@@ -141,7 +158,41 @@ const Matches = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedMatch]);
+  }, [selectedMatch, fetchQuotes]);
+
+  const createOrderFromQuote = async (acceptedQuote: Quote) => {
+    if (!selectedMatch || !user) return;
+
+    try {
+      const isSeller = selectedMatch.supplier_id === user.id;
+      const buyerId = isSeller ? selectedMatch.requester_id : user.id;
+      const sellerId = isSeller ? user.id : selectedMatch.supplier_id;
+
+      const { error } = await supabase.from("orders").insert({
+        match_id: selectedMatch.id,
+        quote_id: acceptedQuote.id,
+        buyer_id: buyerId,
+        seller_id: sellerId,
+        part_id: selectedMatch.part_id,
+        final_price: acceptedQuote.proposed_price,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Order Created",
+        description: "Your order has been created. Check the Orders page for details.",
+      });
+      
+      navigate("/orders");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create order",
+      });
+    }
+  };
 
   const handleAgree = async (matchId: string, isSupplier: boolean) => {
     try {
@@ -334,6 +385,42 @@ const Matches = () => {
                           </div>
                         </AlertDescription>
                       </Alert>
+                    </div>
+                  )}
+
+                  {/* Quote/Negotiation Section */}
+                  {user && (
+                    <div className="px-6 pb-4">
+                      <div className="p-3 border rounded-lg bg-muted/30">
+                        <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <ShoppingCart className="h-4 w-4" />
+                          Price Negotiation
+                        </h3>
+                        <QuoteDialog
+                          matchId={selectedMatch.id}
+                          currentUserId={user.id}
+                          otherUserId={
+                            selectedMatch.supplier_id === user.id
+                              ? selectedMatch.requester_id
+                              : selectedMatch.supplier_id
+                          }
+                          existingQuotes={quotes}
+                          onQuoteSent={() => fetchQuotes(selectedMatch.id)}
+                        />
+                        {quotes.find((q) => q.status === "accepted") && (
+                          <Button
+                            size="sm"
+                            className="w-full mt-2"
+                            onClick={() => {
+                              const acceptedQuote = quotes.find((q) => q.status === "accepted");
+                              if (acceptedQuote) createOrderFromQuote(acceptedQuote);
+                            }}
+                          >
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Create Order (${quotes.find((q) => q.status === "accepted")?.proposed_price.toFixed(2)})
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 

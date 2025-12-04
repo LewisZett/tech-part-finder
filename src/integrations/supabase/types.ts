@@ -103,6 +103,88 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          buyer_id: string
+          created_at: string | null
+          delivered_at: string | null
+          estimated_delivery: string | null
+          final_price: number
+          id: string
+          match_id: string | null
+          notes: string | null
+          part_id: string | null
+          quote_id: string | null
+          seller_id: string
+          shipped_at: string | null
+          shipping_address: string | null
+          shipping_carrier: string | null
+          status: string | null
+          tracking_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string | null
+          delivered_at?: string | null
+          estimated_delivery?: string | null
+          final_price: number
+          id?: string
+          match_id?: string | null
+          notes?: string | null
+          part_id?: string | null
+          quote_id?: string | null
+          seller_id: string
+          shipped_at?: string | null
+          shipping_address?: string | null
+          shipping_carrier?: string | null
+          status?: string | null
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string | null
+          delivered_at?: string | null
+          estimated_delivery?: string | null
+          final_price?: number
+          id?: string
+          match_id?: string | null
+          notes?: string | null
+          part_id?: string | null
+          quote_id?: string | null
+          seller_id?: string
+          shipped_at?: string | null
+          shipping_address?: string | null
+          shipping_carrier?: string | null
+          status?: string | null
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_requests: {
         Row: {
           category: string
@@ -148,6 +230,7 @@ export type Database = {
       parts: {
         Row: {
           category: string
+          color_variant: string | null
           condition: string
           created_at: string | null
           description: string | null
@@ -166,6 +249,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          color_variant?: string | null
           condition: string
           created_at?: string | null
           description?: string | null
@@ -184,6 +268,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          color_variant?: string | null
           condition?: string
           created_at?: string | null
           description?: string | null
@@ -234,6 +319,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      quotes: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_id: string
+          message: string | null
+          proposed_price: number
+          receiver_id: string
+          sender_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          match_id: string
+          message?: string | null
+          proposed_price: number
+          receiver_id: string
+          sender_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_id?: string
+          message?: string | null
+          proposed_price?: number
+          receiver_id?: string
+          sender_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {

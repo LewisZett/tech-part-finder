@@ -82,13 +82,14 @@ Classify each part into the most appropriate category based on its typical use.`
 - condition (MUST be exactly one of: "new", "used", or "refurbished")
 - price (numeric value only, no currency symbols)
 - description (any additional details)
+- color_variant (color or variant info, e.g., "Black", "Silver", "128GB", "Blue - slightly scratched")
 - vehicle_make (for car parts only, e.g., "Toyota", "Honda")
 - vehicle_model (for car parts only, e.g., "Corolla", "Civic")
 - vehicle_year_from (for car parts only, starting year of compatibility)
 - vehicle_year_to (for car parts only, ending year of compatibility)
 
 Return ONLY a JSON array of parts in this exact format:
-[{"part_name": "string", "category": "string", "condition": "string", "price": number, "description": "string", "vehicle_make": "string|null", "vehicle_model": "string|null", "vehicle_year_from": number|null, "vehicle_year_to": number|null}]
+[{"part_name": "string", "category": "string", "condition": "string", "price": number, "description": "string", "color_variant": "string|null", "vehicle_make": "string|null", "vehicle_model": "string|null", "vehicle_year_from": number|null, "vehicle_year_to": number|null}]
 
 If a field is not found, use reasonable defaults:
 - condition: "used"
@@ -156,6 +157,7 @@ Be lenient with formats and extract as much as possible.`
         : 'used',
       price: typeof part.price === 'number' ? part.price : null,
       description: String(part.description || ''),
+      color_variant: part.color_variant ? String(part.color_variant) : null,
       vehicle_make: part.vehicle_make ? String(part.vehicle_make) : null,
       vehicle_model: part.vehicle_model ? String(part.vehicle_model) : null,
       vehicle_year_from: typeof part.vehicle_year_from === 'number' ? part.vehicle_year_from : null,
