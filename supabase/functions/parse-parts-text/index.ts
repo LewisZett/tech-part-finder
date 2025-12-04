@@ -61,6 +61,7 @@ Classify each part into the most appropriate category based on its typical use.`
 - condition (MUST be exactly one of: "new", "used", or "refurbished")
 - price (numeric value only, extract from text if mentioned)
 - description (any additional details)
+- color_variant (color or variant info, e.g., "Black", "Silver", "128GB", "Blue - slightly scratched")
 - vehicle_make (for car parts only, e.g., "Toyota", "Honda")
 - vehicle_model (for car parts only, e.g., "Corolla", "Civic")
 - vehicle_year_from (for car parts only, starting year of compatibility)
@@ -76,7 +77,7 @@ Be flexible with text formats:
 - If multiple parts are on one line separated by commas or semicolons, split them
 
 Return ONLY a JSON array in this exact format:
-[{"part_name": "string", "category": "string", "condition": "new|used|refurbished", "price": number, "description": "string", "vehicle_make": "string|null", "vehicle_model": "string|null", "vehicle_year_from": number|null, "vehicle_year_to": number|null}]
+[{"part_name": "string", "category": "string", "condition": "new|used|refurbished", "price": number, "description": "string", "color_variant": "string|null", "vehicle_make": "string|null", "vehicle_model": "string|null", "vehicle_year_from": number|null, "vehicle_year_to": number|null}]
 
 Use defaults when fields aren't specified:
 - condition: "used"
@@ -209,6 +210,7 @@ Return parts from images in the same JSON format.`
         : 'used',
       price: typeof part.price === 'number' ? part.price : null,
       description: String(part.description || ''),
+      color_variant: part.color_variant ? String(part.color_variant) : null,
       vehicle_make: part.vehicle_make ? String(part.vehicle_make) : null,
       vehicle_model: part.vehicle_model ? String(part.vehicle_model) : null,
       vehicle_year_from: typeof part.vehicle_year_from === 'number' ? part.vehicle_year_from : null,
