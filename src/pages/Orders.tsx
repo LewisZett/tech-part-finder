@@ -113,6 +113,24 @@ const Orders = () => {
     checkUser();
   }, [navigate, fetchOrders]);
 
+  const sendOrderNotification = async (
+    orderId: string,
+    action: "created" | "shipped" | "delivered",
+    trackingNumber?: string,
+    shippingCarrier?: string
+  ) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      await supabase.functions.invoke("send-order-notification", {
+        body: { orderId, action, trackingNumber, shippingCarrier },
+      });
+    } catch (error) {
+      console.error("Failed to send order notification:", error);
+    }
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: string, additionalData?: Record<string, unknown>) => {
     try {
       const updateData: Record<string, unknown> = { status: newStatus, ...additionalData };
@@ -129,6 +147,18 @@ const Orders = () => {
         .eq("id", orderId);
 
       if (error) throw error;
+
+      // Send notification email
+      if (newStatus === "shipped") {
+        sendOrderNotification(
+          orderId,
+          "shipped",
+          additionalData?.tracking_number as string,
+          additionalData?.shipping_carrier as string
+        );
+      } else if (newStatus === "delivered") {
+        sendOrderNotification(orderId, "delivered");
+      }
 
       toast({
         title: "Order Updated",
