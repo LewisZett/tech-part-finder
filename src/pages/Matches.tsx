@@ -168,16 +168,27 @@ const Matches = () => {
       const buyerId = isSeller ? selectedMatch.requester_id : user.id;
       const sellerId = isSeller ? user.id : selectedMatch.supplier_id;
 
-      const { error } = await supabase.from("orders").insert({
+      const { data: newOrder, error } = await supabase.from("orders").insert({
         match_id: selectedMatch.id,
         quote_id: acceptedQuote.id,
         buyer_id: buyerId,
         seller_id: sellerId,
         part_id: selectedMatch.part_id,
         final_price: acceptedQuote.proposed_price,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Send notification email
+      if (newOrder) {
+        try {
+          await supabase.functions.invoke("send-order-notification", {
+            body: { orderId: newOrder.id, action: "created" },
+          });
+        } catch (notifError) {
+          console.error("Failed to send order notification:", notifError);
+        }
+      }
 
       toast({
         title: "Order Created",
@@ -406,6 +417,11 @@ const Matches = () => {
                           }
                           existingQuotes={quotes}
                           onQuoteSent={() => fetchQuotes(selectedMatch.id)}
+                          itemName={(() => {
+                            const partsData = Array.isArray(selectedMatch.parts) ? selectedMatch.parts : selectedMatch.parts ? [selectedMatch.parts] : [];
+                            const requestsData = Array.isArray(selectedMatch.part_requests) ? selectedMatch.part_requests : selectedMatch.part_requests ? [selectedMatch.part_requests] : [];
+                            return partsData[0]?.part_name || requestsData[0]?.part_name || "Item";
+                          })()}
                         />
                         {quotes.find((q) => q.status === "accepted") && (
                           <Button

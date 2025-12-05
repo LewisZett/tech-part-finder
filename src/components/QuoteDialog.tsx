@@ -28,7 +28,26 @@ interface QuoteDialogProps {
   otherUserId: string;
   existingQuotes: Quote[];
   onQuoteSent: () => void;
+  itemName?: string;
 }
+
+const sendQuoteNotification = async (
+  quoteId: string,
+  action: "accepted" | "rejected" | "sent",
+  proposedPrice: number,
+  itemName: string
+) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    await supabase.functions.invoke("send-quote-notification", {
+      body: { quoteId, action, proposedPrice, itemName },
+    });
+  } catch (error) {
+    console.error("Failed to send quote notification:", error);
+  }
+};
 
 export function QuoteDialog({
   matchId,
@@ -36,6 +55,7 @@ export function QuoteDialog({
   otherUserId,
   existingQuotes,
   onQuoteSent,
+  itemName = "Item",
 }: QuoteDialogProps) {
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState("");
@@ -72,15 +92,20 @@ export function QuoteDialog({
           .eq("id", latestQuote.id);
       }
 
-      const { error } = await supabase.from("quotes").insert({
+      const { data: newQuote, error } = await supabase.from("quotes").insert({
         match_id: matchId,
         sender_id: currentUserId,
         receiver_id: otherUserId,
         proposed_price: validation.data.proposed_price,
         message: validation.data.message || null,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Send notification email
+      if (newQuote) {
+        sendQuoteNotification(newQuote.id, "sent", validation.data.proposed_price, itemName);
+      }
 
       toast({
         title: "Quote Sent",
@@ -102,7 +127,7 @@ export function QuoteDialog({
     }
   };
 
-  const handleAccept = async (quoteId: string) => {
+  const handleAccept = async (quoteId: string, quotePrice: number) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -111,6 +136,9 @@ export function QuoteDialog({
         .eq("id", quoteId);
 
       if (error) throw error;
+
+      // Send notification email
+      sendQuoteNotification(quoteId, "accepted", quotePrice, itemName);
 
       toast({
         title: "Quote Accepted",
@@ -128,7 +156,7 @@ export function QuoteDialog({
     }
   };
 
-  const handleReject = async (quoteId: string) => {
+  const handleReject = async (quoteId: string, quotePrice: number) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -137,6 +165,9 @@ export function QuoteDialog({
         .eq("id", quoteId);
 
       if (error) throw error;
+
+      // Send notification email
+      sendQuoteNotification(quoteId, "rejected", quotePrice, itemName);
 
       toast({
         title: "Quote Rejected",
@@ -175,14 +206,14 @@ export function QuoteDialog({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleReject(latestQuote.id)}
+                  onClick={() => handleReject(latestQuote.id, latestQuote.proposed_price)}
                   disabled={loading}
                 >
                   Reject
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => handleAccept(latestQuote.id)}
+                  onClick={() => handleAccept(latestQuote.id, latestQuote.proposed_price)}
                   disabled={loading}
                 >
                   Accept
